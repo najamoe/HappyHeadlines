@@ -5,7 +5,8 @@ using System.Threading.Tasks;
 using api.Data;
 using api.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Identity.Client;
+using Microsoft.EntityFrameworkCore;
+
 
 namespace api.controllers
 {
@@ -13,87 +14,108 @@ namespace api.controllers
     [ApiController]
     public class ArticleController : ControllerBase
     {
-        private readonly ApplicationDBContext _context;
-        public ArticleController(ApplicationDBContext context)
+        private readonly AfricaDbContext _africa;
+        private readonly AsiaDbContext _asia;
+        private readonly EuropeDbContext _europe;
+        private readonly NorthAmericaDbContext _northAmerica;
+        private readonly SouthAmericaDbContext _southAmerica;
+        private readonly OceaniaDbContext _oceania;
+        private readonly AntarcticaDbContext _antarctica;
+        private readonly GlobalDbContext _global;
+
+        public ArticleController(
+            AfricaDbContext africa,
+            AsiaDbContext asia,
+            EuropeDbContext europe,
+            NorthAmericaDbContext northAmerica,
+            SouthAmericaDbContext southAmerica,
+            OceaniaDbContext oceania,
+            AntarcticaDbContext antarctica,
+            GlobalDbContext global)
         {
-            _context = context;
+            _africa = africa;
+            _asia = asia;
+            _europe = europe;
+            _northAmerica = northAmerica;
+            _southAmerica = southAmerica;
+            _oceania = oceania;
+            _antarctica = antarctica;
+            _global = global;
+        }
+
+        // Helper to select DbContext based on continent
+        private DbContext GetDbContext(string continent)
+        {
+            return continent.ToLower() switch
+            {
+                "africa" => _africa,
+                "asia" => _asia,
+                "europe" => _europe,
+                "northamerica" => _northAmerica,
+                "southamerica" => _southAmerica,
+                "oceania" => _oceania,
+                "antarctica" => _antarctica,
+                "global" => _global,
+                _ => throw new Exception("Unknown continent")
+            };
         }
 
         [HttpGet]
-        public IActionResult GetAll()
+        public IActionResult GetAll([FromQuery] string continent)
         {
-            var articles = _context.Articles.ToList();
-
+            var db = GetDbContext(continent);
+            var articles = db.Set<Article>().ToList();
             return Ok(articles);
         }
 
         [HttpGet("{id}")]
-        public IActionResult GetById([FromRoute] int id)
+        public IActionResult GetById([FromQuery] string continent, [FromRoute] int id)
         {
-            var article = _context.Articles.Find(id);
-
-            if (article == null)
-            {
-                return NotFound();
-            }
-
+            var db = GetDbContext(continent);
+            var article = db.Set<Article>().Find(id);
+            if (article == null) return NotFound();
             return Ok(article);
         }
 
         [HttpPost]
-        public IActionResult Create([FromBody] Article article)
+        public IActionResult Create([FromQuery] string continent, [FromBody] Article article)
         {
-            if (article == null)
-            {
-                return BadRequest();
-            }
+            if (article == null) return BadRequest();
 
-            _context.Articles.Add(article);
-            _context.SaveChanges();
+            var db = GetDbContext(continent);
+            db.Set<Article>().Add(article);
+            db.SaveChanges();
 
-            // Returns 201 Created and the created article
-            return CreatedAtAction(nameof(GetById), new { id = article.Id }, article);
+            return CreatedAtAction(nameof(GetById), new { id = article.Id, continent }, article);
         }
 
         [HttpPut("{id}")]
-        public IActionResult Update([FromRoute] int id, [FromBody] Article updatedArticle)
+        public IActionResult Update([FromQuery] string continent, [FromRoute] int id, [FromBody] Article updatedArticle)
         {
-            if (updatedArticle == null || updatedArticle.Id != id)
-            {
-                return BadRequest();
-            }
+            if (updatedArticle == null || updatedArticle.Id != id) return BadRequest();
 
-            var existingArticle = _context.Articles.Find(id);
-            if (existingArticle == null)
-            {
-                return NotFound();
-            }
+            var db = GetDbContext(continent);
+            var existingArticle = db.Set<Article>().Find(id);
+            if (existingArticle == null) return NotFound();
 
             existingArticle.Author = updatedArticle.Author;
             existingArticle.Title = updatedArticle.Title;
             existingArticle.Content = updatedArticle.Content;
 
-            _context.SaveChanges();
-
-            return NoContent(); // 204 indicates update succeeded but no content returned
+            db.SaveChanges();
+            return NoContent();
         }
 
         [HttpDelete("{id}")]
-        public IActionResult Delete([FromRoute] int id)
+        public IActionResult Delete([FromQuery] string continent, [FromRoute] int id)
         {
-            var article = _context.Articles.Find(id);
-            if (article == null)
-            {
-                return NotFound();
-            }
+            var db = GetDbContext(continent);
+            var article = db.Set<Article>().Find(id);
+            if (article == null) return NotFound();
 
-            _context.Articles.Remove(article);
-            _context.SaveChanges();
-
-            return NoContent(); // 204 indicates deletion succeeded
+            db.Set<Article>().Remove(article);
+            db.SaveChanges();
+            return NoContent();
         }
-
-
-
     }
 }
