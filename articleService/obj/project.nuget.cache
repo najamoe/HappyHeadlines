@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "a/vVj4PVb5A=",
+  "dgSpecHash": "JWW3gZiQV0U=",
   "success": true,
-  "projectFilePath": "C:\\Users\\naja_\\Desktop\\HappyHeadlines\\api\\api.csproj",
+  "projectFilePath": "C:\\Users\\naja_\\Desktop\\HappyHeadlines\\articleService\\articleService.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\naja_\\.nuget\\packages\\azure.core\\1.38.0\\azure.core.1.38.0.nupkg.sha512",
     "C:\\Users\\naja_\\.nuget\\packages\\azure.identity\\1.11.4\\azure.identity.1.11.4.nupkg.sha512",

@@ -1,6 +1,6 @@
-@api_HostAddress = http://localhost:5240
+@articleService_Host = http://localhost:8080
 
-GET {{api_HostAddress}}/weatherforecast/
+GET {{articleService_Host}}/article?continent=europe
 Accept: application/json
 
 ###

@@ -5199,11 +5199,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\naja_\\Desktop\\HappyHeadlines\\api\\api.csproj",
-      "projectName": "api",
-      "projectPath": "C:\\Users\\naja_\\Desktop\\HappyHeadlines\\api\\api.csproj",
+      "projectUniqueName": "C:\\Users\\naja_\\Desktop\\HappyHeadlines\\articleService\\articleService.csproj",
+      "projectName": "articleService",
+      "projectPath": "C:\\Users\\naja_\\Desktop\\HappyHeadlines\\articleService\\articleService.csproj",
       "packagesPath": "C:\\Users\\naja_\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\naja_\\Desktop\\HappyHeadlines\\api\\obj\\",
+      "outputPath": "C:\\Users\\naja_\\Desktop\\HappyHeadlines\\articleService\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\naja_\\AppData\\Roaming\\NuGet\\NuGet.Config"
