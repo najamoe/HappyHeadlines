@@ -7,10 +7,9 @@ using api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-
 namespace api.controllers
 {
-    [Route("api/article")]
+    [Route("article/article")]
     [ApiController]
     public class ArticleController : ControllerBase
     {
