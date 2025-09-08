@@ -1,0 +1,6 @@
+@articleService_Host = http://localhost:8080
+
+GET {{articleService_Host}}/article?continent=europe
+Accept: application/json
+
+###
