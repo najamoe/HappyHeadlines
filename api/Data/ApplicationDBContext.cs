@@ -1,20 +1,53 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using api.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace api.Data
 {
-    public class ApplicationDBContext : DbContext
+    public class AfricaDbContext : DbContext
     {
-        public ApplicationDBContext(DbContextOptions dbContextOptions)
-        : base(dbContextOptions)
-        {
+        public AfricaDbContext(DbContextOptions<AfricaDbContext> options) : base(options) { }
+        public DbSet<Article> Articles { get; set; }
+    }
 
-        }
-        
+    public class AsiaDbContext : DbContext
+    {
+        public AsiaDbContext(DbContextOptions<AsiaDbContext> options) : base(options) { }
+        public DbSet<Article> Articles { get; set; }
+    }
+
+    public class EuropeDbContext : DbContext
+    {
+        public EuropeDbContext(DbContextOptions<EuropeDbContext> options) : base(options) { }
+        public DbSet<Article> Articles { get; set; }
+    }
+
+    public class NorthAmericaDbContext : DbContext
+    {
+        public NorthAmericaDbContext(DbContextOptions<NorthAmericaDbContext> options) : base(options) { }
+        public DbSet<Article> Articles { get; set; }
+    }
+
+    public class SouthAmericaDbContext : DbContext
+    {
+        public SouthAmericaDbContext(DbContextOptions<SouthAmericaDbContext> options) : base(options) { }
+        public DbSet<Article> Articles { get; set; }
+    }
+
+    public class OceaniaDbContext : DbContext
+    {
+        public OceaniaDbContext(DbContextOptions<OceaniaDbContext> options) : base(options) { }
+        public DbSet<Article> Articles { get; set; }
+    }
+
+    public class AntarcticaDbContext : DbContext
+    {
+        public AntarcticaDbContext(DbContextOptions<AntarcticaDbContext> options) : base(options) { }
+        public DbSet<Article> Articles { get; set; }
+    }
+
+    public class GlobalDbContext : DbContext
+    {
+        public GlobalDbContext(DbContextOptions<GlobalDbContext> options) : base(options) { }
         public DbSet<Article> Articles { get; set; }
     }
 }
