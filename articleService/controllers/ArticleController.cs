@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace api.controllers
 {
-    [Route("article/article")]
+    [Route("article")]
     [ApiController]
     public class ArticleController : ControllerBase
     {
@@ -59,13 +59,21 @@ namespace api.controllers
             };
         }
 
-        [HttpGet]
-        public IActionResult GetAll([FromQuery] string continent)
+        [HttpGet("by-continent/{continent}")]
+        public IActionResult GetAllByContinent([FromRoute] string continent)
         {
-            var db = GetDbContext(continent);
-            var articles = db.Set<Article>().ToList();
-            return Ok(articles);
+            try
+            {
+                var db = GetDbContext(continent);
+                var articles = db.Set<Article>().ToList();
+                return Ok(articles);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
         }
+
 
         [HttpGet("{id}")]
         public IActionResult GetById([FromQuery] string continent, [FromRoute] int id)

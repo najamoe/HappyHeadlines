@@ -1,24 +1,21 @@
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
 WORKDIR /app
 EXPOSE 8080
 
-ENV ASPNETCORE_URLS=http://+:8080
-
-USER app
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-ARG configuration=Release
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["articleService/articleService.csproj", "articleService/"]
-RUN dotnet restore "articleService/articleService.csproj"
+
+COPY ["ArticleService.csproj", "./"]
+RUN dotnet restore "./ArticleService.csproj"
+
 COPY . .
-WORKDIR "/src/articleService"
-RUN dotnet build "articleService.csproj" -c $configuration -o /app/build
+RUN dotnet build "./ArticleService.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
-ARG configuration=Release
-RUN dotnet publish "articleService.csproj" -c $configuration -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./ArticleService.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "articleService.dll"]
+ENTRYPOINT ["dotnet", "ArticleService.dll"]
