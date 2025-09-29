@@ -14,16 +14,16 @@ namespace DraftService.Models
         [Key]
         public int Id { get; set; }
 
-        [Required]
+      
         [MaxLength(200)]
-        public string Title { get; set; }
+        public required string Title { get; set; }
 
-        [Required]
-        public string Content { get; set; }
+  
+        public required string Content { get; set; }
 
-        [Required]
+     
         [MaxLength(100)]
-        public string Author { get; set; }
+        public required string Author { get; set; }
 
         public DraftStatus Status { get; set; } = DraftStatus.Draft;
 
