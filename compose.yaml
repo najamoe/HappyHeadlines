@@ -3,8 +3,8 @@ version: '3.9'
 services:
   articleservice:
     build:
-      context: ./ArticleService
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ArticleService/Dockerfile
     ports:
       - "8080:8080"
 
