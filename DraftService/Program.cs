@@ -1,27 +1,18 @@
+using DraftService;
 using DraftService.Data;
 using Microsoft.EntityFrameworkCore;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Load connection string from appsettings.json
+var connectionString = builder.Configuration.GetConnectionString("DraftDatabase");
+
+// Register EF Core DbContext
+builder.Services.AddDbContext<DraftDbContext>(options =>
+    options.UseSqlServer(connectionString));
 
 builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
 
 var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
-
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
 app.MapControllers();
-
 app.Run();
