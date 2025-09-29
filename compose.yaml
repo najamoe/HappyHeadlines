@@ -23,3 +23,18 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8082:8080"
+
+  seq:
+    image: datalust/seq:latest    
+    ports:
+       - 5341:5341
+       - 5342:80
+    volumes:
+       - rps_seq_data:/data
+    environment:
+       - ACCEPT_EULA=Y
+       - SEQ_FIRSTRUN_NOAUTHENTICATION=true
+
+# Define the named volume
+volumes:
+  rps_seq_data:
