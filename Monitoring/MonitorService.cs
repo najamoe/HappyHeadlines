@@ -1,4 +1,5 @@
 ﻿using Serilog;
+using Serilog.Core;
 
 namespace Monitoring
 {

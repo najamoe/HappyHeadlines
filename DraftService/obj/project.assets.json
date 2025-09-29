@@ -296,6 +296,22 @@
             "related": ".xml"
           }
         }
+      },
+      "Monitoring/1.0.0": {
+        "type": "project",
+        "framework": ".NETCoreApp,Version=v9.0",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "9.0.9",
+          "Serilog": "4.3.0",
+          "Serilog.Sinks.Console": "6.0.0",
+          "Serilog.Sinks.Seq": "9.0.0"
+        },
+        "compile": {
+          "bin/placeholder/Monitoring.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/Monitoring.dll": {}
+        }
       }
     }
   },
@@ -834,6 +850,11 @@
         "serilog.sinks.seq.9.0.0.nupkg.sha512",
         "serilog.sinks.seq.nuspec"
       ]
+    },
+    "Monitoring/1.0.0": {
+      "type": "project",
+      "path": "../Monitoring/Monitoring.csproj",
+      "msbuildProject": "../Monitoring/Monitoring.csproj"
     }
   },
   "projectFileDependencyGroups": {
@@ -841,6 +862,7 @@
       "Microsoft.AspNetCore.OpenApi >= 9.0.9",
       "Microsoft.EntityFrameworkCore >= 9.0.9",
       "Microsoft.VisualStudio.Azure.Containers.Tools.Targets >= 1.23.0",
+      "Monitoring >= 1.0.0",
       "Serilog >= 4.3.0",
       "Serilog.Sinks.Console >= 6.0.0",
       "Serilog.Sinks.Seq >= 9.0.0"
@@ -877,7 +899,11 @@
       "frameworks": {
         "net9.0": {
           "targetAlias": "net9.0",
-          "projectReferences": {}
+          "projectReferences": {
+            "C:\\Users\\naja_\\Desktop\\HappyHeadlines\\Monitoring\\Monitoring.csproj": {
+              "projectPath": "C:\\Users\\naja_\\Desktop\\HappyHeadlines\\Monitoring\\Monitoring.csproj"
+            }
+          }
         }
       },
       "warningProperties": {

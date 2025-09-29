@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ArticleService")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+68756d8d1405d7d1d5214ad331556787b042308e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+186565cf40be272275ce00047ec8472402be44ab")]
 [assembly: System.Reflection.AssemblyProductAttribute("ArticleService")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ArticleService")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

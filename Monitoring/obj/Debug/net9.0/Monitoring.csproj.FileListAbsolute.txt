@@ -1,0 +1,13 @@
+C:\Users\naja_\Desktop\HappyHeadlines\Monitoring\bin\Debug\net9.0\Monitoring.deps.json
+C:\Users\naja_\Desktop\HappyHeadlines\Monitoring\bin\Debug\net9.0\Monitoring.dll
+C:\Users\naja_\Desktop\HappyHeadlines\Monitoring\bin\Debug\net9.0\Monitoring.pdb
+C:\Users\naja_\Desktop\HappyHeadlines\Monitoring\obj\Debug\net9.0\Monitoring.csproj.AssemblyReference.cache
+C:\Users\naja_\Desktop\HappyHeadlines\Monitoring\obj\Debug\net9.0\Monitoring.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\naja_\Desktop\HappyHeadlines\Monitoring\obj\Debug\net9.0\Monitoring.AssemblyInfoInputs.cache
+C:\Users\naja_\Desktop\HappyHeadlines\Monitoring\obj\Debug\net9.0\Monitoring.AssemblyInfo.cs
+C:\Users\naja_\Desktop\HappyHeadlines\Monitoring\obj\Debug\net9.0\Monitoring.csproj.CoreCompileInputs.cache
+C:\Users\naja_\Desktop\HappyHeadlines\Monitoring\obj\Debug\net9.0\Monitoring.sourcelink.json
+C:\Users\naja_\Desktop\HappyHeadlines\Monitoring\obj\Debug\net9.0\Monitoring.dll
+C:\Users\naja_\Desktop\HappyHeadlines\Monitoring\obj\Debug\net9.0\refint\Monitoring.dll
+C:\Users\naja_\Desktop\HappyHeadlines\Monitoring\obj\Debug\net9.0\Monitoring.pdb
+C:\Users\naja_\Desktop\HappyHeadlines\Monitoring\obj\Debug\net9.0\ref\Monitoring.dll
