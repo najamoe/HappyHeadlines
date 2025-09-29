@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.0.11018.127 d18.0
+VisualStudioVersion = 18.0.11018.127
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArticleService", "articleService\ArticleService.csproj", "{CBFA08EA-AECE-205F-7B85-326FD0B81BAD}"
 EndProject
@@ -10,6 +10,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProfanityService", "ProfanityService\ProfanityService.csproj", "{42B8F1F1-A1FC-497C-8B24-8BD9A87F2CB5}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DraftService", "DraftService\DraftService.csproj", "{5300AE98-3973-4E93-8989-A6D47C953711}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Monitoring", "Monitoring\Monitoring.csproj", "{D854FBF1-89BC-4390-9FD0-5B5286F17F58}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -69,6 +71,18 @@ Global
 		{5300AE98-3973-4E93-8989-A6D47C953711}.Release|x64.Build.0 = Release|Any CPU
 		{5300AE98-3973-4E93-8989-A6D47C953711}.Release|x86.ActiveCfg = Release|Any CPU
 		{5300AE98-3973-4E93-8989-A6D47C953711}.Release|x86.Build.0 = Release|Any CPU
+		{D854FBF1-89BC-4390-9FD0-5B5286F17F58}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D854FBF1-89BC-4390-9FD0-5B5286F17F58}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D854FBF1-89BC-4390-9FD0-5B5286F17F58}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D854FBF1-89BC-4390-9FD0-5B5286F17F58}.Debug|x64.Build.0 = Debug|Any CPU
+		{D854FBF1-89BC-4390-9FD0-5B5286F17F58}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D854FBF1-89BC-4390-9FD0-5B5286F17F58}.Debug|x86.Build.0 = Debug|Any CPU
+		{D854FBF1-89BC-4390-9FD0-5B5286F17F58}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D854FBF1-89BC-4390-9FD0-5B5286F17F58}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D854FBF1-89BC-4390-9FD0-5B5286F17F58}.Release|x64.ActiveCfg = Release|Any CPU
+		{D854FBF1-89BC-4390-9FD0-5B5286F17F58}.Release|x64.Build.0 = Release|Any CPU
+		{D854FBF1-89BC-4390-9FD0-5B5286F17F58}.Release|x86.ActiveCfg = Release|Any CPU
+		{D854FBF1-89BC-4390-9FD0-5B5286F17F58}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
