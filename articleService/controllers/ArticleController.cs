@@ -6,6 +6,7 @@ using api.Data;
 using api.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Monitoring;
 
 namespace api.controllers
 {
@@ -62,6 +63,9 @@ namespace api.controllers
         [HttpGet("by-continent/{continent}")]
         public IActionResult GetAllByContinent([FromRoute] string continent)
         {
+            // Start an OpenTelemetry activity
+            using var activity = MonitorService.ActivitySource.StartActivity("GetAllByContinent");
+
             try
             {
                 var db = GetDbContext(continent);
