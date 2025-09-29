@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DraftService")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+68756d8d1405d7d1d5214ad331556787b042308e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8c0287e01973e78c573d6d43afe5aaf180e7291c")]
 [assembly: System.Reflection.AssemblyProductAttribute("DraftService")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DraftService")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
