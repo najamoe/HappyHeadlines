@@ -1,9 +1,0 @@
-C:\Users\naja_\Desktop\HappyHeadlines\DraftService\obj\Debug\net9.0\DraftService.csproj.AssemblyReference.cache
-C:\Users\naja_\Desktop\HappyHeadlines\DraftService\obj\Debug\net9.0\rpswa.dswa.cache.json
-C:\Users\naja_\Desktop\HappyHeadlines\DraftService\obj\Debug\net9.0\DraftService.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\naja_\Desktop\HappyHeadlines\DraftService\obj\Debug\net9.0\DraftService.AssemblyInfoInputs.cache
-C:\Users\naja_\Desktop\HappyHeadlines\DraftService\obj\Debug\net9.0\DraftService.AssemblyInfo.cs
-C:\Users\naja_\Desktop\HappyHeadlines\DraftService\obj\Debug\net9.0\DraftService.csproj.CoreCompileInputs.cache
-C:\Users\naja_\Desktop\HappyHeadlines\DraftService\obj\Debug\net9.0\DraftService.MvcApplicationPartsAssemblyInfo.cs
-C:\Users\naja_\Desktop\HappyHeadlines\DraftService\obj\Debug\net9.0\DraftService.MvcApplicationPartsAssemblyInfo.cache
-C:\Users\naja_\Desktop\HappyHeadlines\DraftService\obj\Debug\net9.0\DraftService.sourcelink.json
