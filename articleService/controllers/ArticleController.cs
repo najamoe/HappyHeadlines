@@ -65,16 +65,23 @@ namespace api.controllers
         {
             // Start an OpenTelemetry activity
             using var activity = MonitorService.ActivitySource.StartActivity("GetAllByContinent");
+            {
 
-            try
-            {
-                var db = GetDbContext(continent);
-                var articles = db.Set<Article>().ToList();
-                return Ok(articles);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { error = ex.Message });
+                try
+                {
+                    var db = GetDbContext(continent);
+                    var articles = db.Set<Article>().ToList();
+
+                    // Log to seq
+                    MonitorService.Log.Information("Fetched {Count} articles for continent {Continent}", articles.Count, continent);
+
+                    return Ok(articles);
+                }
+                catch (Exception ex)
+                {
+                    MonitorService.Log.Error(ex, "Error fetching articles for continent {Continent}", continent);
+                    return BadRequest(new { error = ex.Message });
+                }
             }
         }
 

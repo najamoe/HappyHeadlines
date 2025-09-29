@@ -1,5 +1,6 @@
 using api.Data;
 using Microsoft.EntityFrameworkCore;
+using Monitoring;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,6 +34,12 @@ builder.Services.AddDbContext<AntarcticaDbContext>(options =>
 
 builder.Services.AddDbContext<GlobalDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("GlobalConnection")));
+
+
+// --- Initialize Monitoring / OpenTelemetry / Serilog ---
+_ = MonitorService.TracerProvider; // forces static constructor to run early
+_ = MonitorService.Log;            // ensures Serilog logger is initialized
+
 
 var app = builder.Build();
 
