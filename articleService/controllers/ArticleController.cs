@@ -61,7 +61,7 @@ namespace api.controllers
         }
 
         [HttpGet("by-continent/{continent}")]
-        public IActionResult GetAllByContinent([FromRoute] string continent)
+        public async Task<IActionResult> GetAllByContinent([FromRoute] string continent)
         {
             // Start an OpenTelemetry activity
             using var activity = MonitorService.ActivitySource.StartActivity("GetAllByContinent");
@@ -69,8 +69,12 @@ namespace api.controllers
 
                 try
                 {
+                    MonitorService.Log.Information("Continent received: {Continent}", continent);
+
                     var db = GetDbContext(continent);
-                    var articles = db.Set<Article>().ToList();
+                    var articles = await db.Set<Article>().ToListAsync();
+
+                    await Task.Delay(3000); // Simulate some processing delay
 
                     // Log to seq
                     MonitorService.Log.Information("Fetched {Count} articles for continent {Continent}", articles.Count, continent);
@@ -84,7 +88,6 @@ namespace api.controllers
                 }
             }
         }
-
 
         [HttpGet("{id}")]
         public IActionResult GetById([FromQuery] string continent, [FromRoute] int id)
