@@ -28,12 +28,12 @@ builder.Services.AddDbContext<CommentDbContext>(options =>
 // Register named HttpClient for ProfanityService
 builder.Services.AddHttpClient("ProfanityService", c =>
 {
-    c.BaseAddress = new Uri("http://profanityservice:80/");
+    c.BaseAddress = new Uri("http://profanityservice:8080/");
 })
 .AddPolicyHandler(circuitBreakerPolicy);
 builder.Services.AddHttpClient("ArticleService", client =>
 {
-    client.BaseAddress = new Uri("https://articleservice:80/"); // actual URL of ArticleService
+    client.BaseAddress = new Uri("http://articleservice:8080/"); 
 });
 
 
