@@ -41,8 +41,20 @@ _ = MonitorService.TracerProvider; // forces static constructor to run early
 _ = MonitorService.Log;            // ensures Serilog logger is initialized
 
 
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
+
 var app = builder.Build();
 
+app.UseCors();
 
 app.UseSwagger();
 app.UseStaticFiles();
