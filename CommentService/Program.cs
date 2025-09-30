@@ -35,10 +35,19 @@ builder.Services.AddHttpClient("ArticleService", client =>
 {
     client.BaseAddress = new Uri("http://articleservice:8080/"); 
 });
-
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 
 var app = builder.Build();
 
+app.UseCors();
 
 // swagger setup
 app.UseSwagger();

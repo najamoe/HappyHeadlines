@@ -27,17 +27,18 @@ namespace ProfanityService.Controllers
         }
 
         [HttpPost("check")]
-        public IActionResult Check([FromBody] string text)
+        public IActionResult Check([FromBody] ProfanityCheckRequest request)
         {
             var profanities = _context.Profanities
                 .Select(p => p.Word)
                 .ToList();
 
             bool contains = profanities.Any(p =>
-                text.Contains(p, StringComparison.OrdinalIgnoreCase));
+                request.Text.Contains(p, StringComparison.OrdinalIgnoreCase));
 
             return Ok(new { isClean = !contains });
         }
+
 
     }
 }
