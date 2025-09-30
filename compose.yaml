@@ -16,6 +16,7 @@ services:
       - "8081:8080"
     depends_on:
       - profanityservice
+      - articleservice
 
   profanityservice:
     build:
