@@ -7,4 +7,9 @@ namespace ProfanityService.Models
         public int Id { get; set; }
         public string? Word { get; set; }
     }
+
+    public class ProfanityCheckRequest
+    {
+        public string Text { get; set; } = string.Empty;
+    }
 }
