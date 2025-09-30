@@ -30,6 +30,7 @@ namespace Monitoring
                 })
                 .AddSource(ActivitySource.Name)
                 .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(ServiceName))
+                .SetSampler(new AlwaysOnSampler())
                 .Build();
 
 
