@@ -1,6 +1,11 @@
-using CommentService.Data;
 using Microsoft.EntityFrameworkCore;
 using Polly;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Builder;
+using CommentService.Data;
+
+
 
 var builder = WebApplication.CreateBuilder(args);
 var circuitBreakerPolicy = GetCircuitBreakerPolicy();
@@ -16,6 +21,7 @@ static IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy()
 
 // Add services to the container
 builder.Services.AddControllers();
+builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<CommentDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("CommentDatabase")));
 
@@ -25,8 +31,23 @@ builder.Services.AddHttpClient("ProfanityService", c =>
     c.BaseAddress = new Uri("http://profanityservice:80/");
 })
 .AddPolicyHandler(circuitBreakerPolicy);
+builder.Services.AddHttpClient("ArticleService", client =>
+{
+    client.BaseAddress = new Uri("https://articleservice:80/"); // actual URL of ArticleService
+});
+
 
 var app = builder.Build();
+
+
+// swagger setup
+app.UseSwagger();
+app.UseSwaggerUI();
+
+
+
+
+
 app.MapControllers();
 
 app.Run();
