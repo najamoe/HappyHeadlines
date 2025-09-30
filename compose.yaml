@@ -35,6 +35,11 @@ services:
        - ACCEPT_EULA=Y
        - SEQ_FIRSTRUN_NOAUTHENTICATION=true
 
+  zipkin:
+    image: openzipkin/zipkin
+    ports:
+       - "9411:9411"
+
 # Define the named volume
 volumes:
   rps_seq_data:
