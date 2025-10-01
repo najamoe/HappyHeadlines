@@ -19,7 +19,12 @@ builder.Services.AddOpenTelemetry()
 
 builder.Services.AddHttpClient("DraftClient", client =>
 {
-    client.BaseAddress = new Uri("http://draftservice:8080"); // Adjust the URL as needed
+    client.BaseAddress = new Uri("http://draftservice:8080"); 
+});
+
+builder.Services.AddHttpClient("ProfanityService", client =>
+{
+    client.BaseAddress = new Uri("http://profanityservice:8080"); 
 });
 
 // Services
