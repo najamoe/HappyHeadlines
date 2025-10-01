@@ -37,7 +37,7 @@ public class PublishController : ControllerBase
         }
 
         // 2. Check draft status
-        if (!string.Equals(draft.Status, "ReadyToPublish", StringComparison.OrdinalIgnoreCase))
+        if (draft.Status != 1) // 1 = Ready to publish 0 = draft 
         {
             return BadRequest(new { message = "Draft is not ready to publish" });
         }

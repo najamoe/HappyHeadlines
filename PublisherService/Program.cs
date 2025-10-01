@@ -1,8 +1,9 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using OpenTelemetry.Trace;
-using OpenTelemetry.Resources;
 using OpenTelemetry.Instrumentation.Http;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using PublisherService.Clients;
 using PublisherService.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,9 +18,9 @@ builder.Services.AddOpenTelemetry()
             .AddZipkinExporter(); // Export traces to view in Zipkin
     });
 
-builder.Services.AddHttpClient("DraftClient", client =>
+builder.Services.AddHttpClient<DraftClient>(client =>
 {
-    client.BaseAddress = new Uri("http://draftservice:8080"); 
+    client.BaseAddress = new Uri("http://draftservice:8080");
 });
 
 builder.Services.AddHttpClient("ProfanityService", client =>

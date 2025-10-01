@@ -24,6 +24,13 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8082:8080"
+    
+  draftservice:
+    build:
+     context: .
+     dockerfile: DraftService/Dockerfile
+    ports:
+      - "8084:8080" 
 
   publisherservice:
     build:
@@ -33,6 +40,7 @@ services:
       - "8083:8080"
     depends_on:
       - rabbitmq
+      - draftservice
     environment:
       RABBITMQ_HOST: rabbitmq
 
