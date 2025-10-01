@@ -12,13 +12,16 @@ public class PublishController : ControllerBase
     private readonly RabbitMqPublisher _publisher;
     private static readonly ActivitySource ActivitySource = new("PublisherService");
     private readonly HttpClient _profanityClient;
+    private readonly DraftClient _draftClient;
 
     public PublishController(
         RabbitMqPublisher publisher,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        DraftClient draftClient)
     {
         _publisher = publisher;
         _profanityClient = httpClientFactory.CreateClient("ProfanityService");
+        _draftClient = draftClient;
     }
 
     [HttpPost("{draftId}")]
