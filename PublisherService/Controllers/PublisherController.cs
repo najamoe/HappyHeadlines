@@ -25,40 +25,41 @@ public class PublishController : ControllerBase
     }
 
     [HttpPost("{draftId}")]
-    public async Task<IActionResult> Publish(int draftId, [FromServices] DraftClient draftClient)
+    public async Task<IActionResult> Publish(int draftId)
     {
         using var activity = ActivitySource.StartActivity("PublishArticle");
 
         // 1. Fetch draft
-        var draft = await draftClient.GetDraftAsync(draftId);
+        var draft = await _draftClient.GetDraftAsync(draftId);
         if (draft == null)
         {
             return NotFound(new { message = "Draft not found" });
         }
 
-        if (draft.Status != "ReadyToPublish")
+        // 2. Check draft status
+        if (!string.Equals(draft.Status, "ReadyToPublish", StringComparison.OrdinalIgnoreCase))
         {
             return BadRequest(new { message = "Draft is not ready to publish" });
         }
 
-        // 2. Check profanity
+        // 3. Call ProfanityService
         var response = await _profanityClient.PostAsJsonAsync("api/profanity/check", new
         {
-            text = draft.Content
+            Text = draft.Content
         });
 
         if (!response.IsSuccessStatusCode)
         {
-            return StatusCode((int)response.StatusCode, new { message = "ProfanityService unavailable" });
+            return StatusCode((int)response.StatusCode, new { message = "Profanity service unavailable" });
         }
 
-        var check = await response.Content.ReadFromJsonAsync<ProfanityCheckResponse>();
-        if (check == null || !check.IsClean)
+        var result = await response.Content.ReadFromJsonAsync<ProfanityResponse>();
+        if (result is null || !result.IsClean)
         {
             return BadRequest(new { message = "Draft contains profanity" });
         }
 
-        // 3. Publish article
+        // 4. Map draft → article and publish to queue
         var article = new ArticleDto
         {
             Id = draft.Id.ToString(),
@@ -69,11 +70,11 @@ public class PublishController : ControllerBase
 
         await _publisher.PublishArticleAsync(article);
 
+        // 5. Respond with success
         return Ok(new { status = "published", traceId = article.TraceId });
     }
 
-    // DTO to match ProfanityService response
-    public class ProfanityCheckResponse
+    public class ProfanityResponse
     {
         public bool IsClean { get; set; }
     }
