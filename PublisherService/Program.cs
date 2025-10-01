@@ -17,7 +17,10 @@ builder.Services.AddOpenTelemetry()
             .AddZipkinExporter(); // Export traces to view in Zipkin
     });
 
-
+builder.Services.AddHttpClient("DraftClient", client =>
+{
+    client.BaseAddress = new Uri("http://draftservice:8080"); // Adjust the URL as needed
+});
 
 // Services
 
