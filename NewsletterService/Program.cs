@@ -1,4 +1,5 @@
 using NewsletterService.Infrastructure;
+using NewsletterService.Consumers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,7 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddSingleton<RabbitMqConnection>();
 builder.Services.AddHostedService<ArticleConsumer>();
+builder.Services.AddHostedService<SubscriberConsumer>();
 
 var app = builder.Build();
 
