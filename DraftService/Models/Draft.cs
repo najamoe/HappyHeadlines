@@ -5,8 +5,8 @@ namespace DraftService.Models
 {
     public enum DraftStatus
     {
-        Draft,
-        ReadyToPublish
+        Draft, // 0
+        ReadyToPublish // 1
     }
 
     public class Draft

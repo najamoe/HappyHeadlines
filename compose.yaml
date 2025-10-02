@@ -24,12 +24,41 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8082:8080"
+    
+  draftservice:
+    build:
+     context: .
+     dockerfile: DraftService/Dockerfile
+    ports:
+      - "8084:8080" 
+
+  publisherservice:
+    build:
+      context: .
+      dockerfile: PublisherService/Dockerfile
+    ports:
+      - "8083:8080"
+    depends_on:
+      - rabbitmq
+      - draftservice
+    environment:
+      RABBITMQ_HOST: rabbitmq
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
 
   seq:
     image: datalust/seq:latest    
     ports:
-       - 5341:5341
-       - 5342:80
+       - "5341:5341"
+       - "5342:80"
     volumes:
        - rps_seq_data:/data
     environment:

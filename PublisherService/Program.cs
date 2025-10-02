@@ -1,0 +1,48 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using OpenTelemetry.Instrumentation.Http;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using PublisherService.Clients;
+using PublisherService.Infrastructure;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// OpenTelemetry Tracing
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracerProviderBuilder =>
+    {
+        tracerProviderBuilder
+            .AddAspNetCoreInstrumentation() // Monitor incoming HTTP requests
+            .AddHttpClientInstrumentation() // Monitor outgoing HTTP requests
+            .AddZipkinExporter(); // Export traces to view in Zipkin
+    });
+
+builder.Services.AddHttpClient<DraftClient>(client =>
+{
+    client.BaseAddress = new Uri("http://draftservice:8080");
+});
+
+builder.Services.AddHttpClient("ProfanityService", client =>
+{
+    client.BaseAddress = new Uri("http://profanityservice:8080"); 
+});
+
+// Services
+
+builder.Services.AddSingleton<RabbitMqPublisher>(); 
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+// Swagger UI
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "PublisherService API V1");
+});
+app.MapControllers();
+
+app.Run();
