@@ -1,4 +1,9 @@
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using SubscriberService.Data;
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddDbContext<SubscriberServiceContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("SubscriberServiceContext") ?? throw new InvalidOperationException("Connection string 'SubscriberServiceContext' not found.")));
 
 // Add services to the container.
 
