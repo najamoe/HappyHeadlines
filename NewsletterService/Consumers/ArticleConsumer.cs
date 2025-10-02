@@ -6,15 +6,15 @@ using System.Text;
 using System.Text.Json;
 using NewsletterService.Infrastructure;
 
-namespace NewsletterService.Infrastructure
+namespace NewsletterService.Consumers
 {
-    public class Consumer : BackgroundService
+    public class ArticleConsumer : BackgroundService
     {
         private readonly RabbitMqConnection _rabbitMqConnection;
-        private readonly ILogger<Consumer> _logger;
+        private readonly ILogger<ArticleConsumer> _logger;
         private const string QueueName = "ArticleQueue";
 
-        public Consumer(RabbitMqConnection rabbitMqConnection, ILogger<Consumer> logger)
+        public ArticleConsumer(RabbitMqConnection rabbitMqConnection, ILogger<ArticleConsumer> logger)
         {
             _rabbitMqConnection = rabbitMqConnection;
             _logger = logger;
