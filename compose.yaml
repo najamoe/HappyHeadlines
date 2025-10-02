@@ -49,10 +49,12 @@ services:
       context: .
       dockerfile: NewsletterService/Dockerfile
     ports:
-       - "8085:8080"
+      - "8085:8080"
     depends_on:
-      - rabbitmq
-      - articleservice
+     rabbitmq:
+      condition: service_healthy
+     articleservice:
+      condition: service_started
     environment:
       RABBITMQ_HOST: rabbitmq
   
@@ -72,12 +74,15 @@ services:
     image: rabbitmq:3-management
     container_name: rabbitmq
     ports:
-      - "5672:5672"   # AMQP
-      - "15672:15672" # Management UI
+      - "5672:5672"
+      - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
-
+     RABBITMQ_DEFAULT_USER: guest
+     RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+     test: ["CMD", "rabbitmqctl", "status"]
+     interval: 5s
+     retries: 5
   seq:
     image: datalust/seq:latest    
     ports:
