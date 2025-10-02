@@ -4,23 +4,23 @@ using System.Threading.Channels;
 
 namespace NewsletterService.Infrastructure;
 
-public class RabbitMqConnection : IDisposable
+public class RabbitMqConnection 
 {
     private readonly IConnection _connection;
     private readonly IChannel _channel;
 
     public IChannel Channel => _channel;
 
-    public RabbitMqConnection()
+    public RabbitMqConnection(string hostName = "rabbitmq", string user = "guest", string pass = "guest", string vhost = "/")
     {
-        var host = Environment.GetEnvironmentVariable("RABBITMQ_HOST") ?? "localhost";
+       
 
         var factory = new ConnectionFactory
         {
-            HostName = host,
-            UserName = "guest",
-            Password = "guest",
-            VirtualHost = "/",
+            HostName = hostName,
+            UserName = user,
+            Password = pass,
+            VirtualHost = vhost,
             Port = 5672
         };
 
@@ -57,9 +57,12 @@ public class RabbitMqConnection : IDisposable
         );
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        _channel?.Dispose();
-        _connection?.Dispose();
+        if (_channel != null)
+            await _channel.DisposeAsync();
+        if (_connection != null)
+            await _connection.DisposeAsync();
     }
+
 }

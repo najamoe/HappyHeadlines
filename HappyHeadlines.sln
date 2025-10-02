@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PublisherService", "Publish
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NewsletterService", "NewsletterService\NewsletterService.csproj", "{D80BDBB7-544D-4C6C-975A-F931E4A86069}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SubscriberService", "SubscriberService\SubscriberService.csproj", "{49E44AAD-D2DB-4199-8617-C532709F594F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -111,6 +113,18 @@ Global
 		{D80BDBB7-544D-4C6C-975A-F931E4A86069}.Release|x64.Build.0 = Release|Any CPU
 		{D80BDBB7-544D-4C6C-975A-F931E4A86069}.Release|x86.ActiveCfg = Release|Any CPU
 		{D80BDBB7-544D-4C6C-975A-F931E4A86069}.Release|x86.Build.0 = Release|Any CPU
+		{49E44AAD-D2DB-4199-8617-C532709F594F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{49E44AAD-D2DB-4199-8617-C532709F594F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{49E44AAD-D2DB-4199-8617-C532709F594F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{49E44AAD-D2DB-4199-8617-C532709F594F}.Debug|x64.Build.0 = Debug|Any CPU
+		{49E44AAD-D2DB-4199-8617-C532709F594F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{49E44AAD-D2DB-4199-8617-C532709F594F}.Debug|x86.Build.0 = Debug|Any CPU
+		{49E44AAD-D2DB-4199-8617-C532709F594F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{49E44AAD-D2DB-4199-8617-C532709F594F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{49E44AAD-D2DB-4199-8617-C532709F594F}.Release|x64.ActiveCfg = Release|Any CPU
+		{49E44AAD-D2DB-4199-8617-C532709F594F}.Release|x64.Build.0 = Release|Any CPU
+		{49E44AAD-D2DB-4199-8617-C532709F594F}.Release|x86.ActiveCfg = Release|Any CPU
+		{49E44AAD-D2DB-4199-8617-C532709F594F}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -59,14 +59,15 @@ namespace SubscriberService.Controllers
             );
 
                 }
-            catch (DbUpdateException ex)
+            catch (DbUpdateException)
             {
-                // Log the exception (not shown here for brevity)
+                
+                
                 return StatusCode(500, "An error occurred while saving the subscriber.");
             }
-            catch (Exception ex)
+            catch (Exception )
             {
-                // Log the exception (not shown here for brevity)
+               
                 return StatusCode(500, "An error occurred while publishing the subscriber.");
             }
 

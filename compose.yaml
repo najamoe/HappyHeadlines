@@ -25,13 +25,6 @@ services:
     ports:
       - "8082:8080"
     
-  draftservice:
-    build:
-     context: .
-     dockerfile: DraftService/Dockerfile
-    ports:
-      - "8084:8080" 
-
   publisherservice:
     build:
       context: .
@@ -44,6 +37,13 @@ services:
     environment:
       RABBITMQ_HOST: rabbitmq
 
+  draftservice:
+    build:
+     context: .
+     dockerfile: DraftService/Dockerfile
+    ports:
+      - "8084:8080" 
+
   newsletterservice:
     build:
       context: .
@@ -51,11 +51,21 @@ services:
     ports:
        - "8085:8080"
     depends_on:
-        - rabbitmq
-        - articleservice
+      - rabbitmq
+      - articleservice
     environment:
       RABBITMQ_HOST: rabbitmq
-
+  
+  subscriberservice:
+    build:
+      context: .
+      dockerfile: SubscriberService/Dockerfile
+    ports:
+      - "8086:8080"
+    depends_on:
+      - rabbitmq
+    environment:
+      RABBITMQ_HOST: rabbitmq
 
 
   rabbitmq:
