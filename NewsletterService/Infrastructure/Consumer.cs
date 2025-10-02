@@ -8,13 +8,13 @@ using NewsletterService.Infrastructure;
 
 namespace NewsletterService.Infrastructure
 {
-    public class ArticleConsumer : BackgroundService
+    public class Consumer : BackgroundService
     {
         private readonly RabbitMqConnection _rabbitMqConnection;
-        private readonly ILogger<ArticleConsumer> _logger;
+        private readonly ILogger<Consumer> _logger;
         private const string QueueName = "ArticleQueue";
 
-        public ArticleConsumer(RabbitMqConnection rabbitMqConnection, ILogger<ArticleConsumer> logger)
+        public Consumer(RabbitMqConnection rabbitMqConnection, ILogger<Consumer> logger)
         {
             _rabbitMqConnection = rabbitMqConnection;
             _logger = logger;
