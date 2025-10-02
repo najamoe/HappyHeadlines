@@ -44,6 +44,20 @@ services:
     environment:
       RABBITMQ_HOST: rabbitmq
 
+  newsletterservice:
+    build:
+      context: .
+      dockerfile: NewsletterService/Dockerfile
+    ports:
+       - "8085:8080"
+    depends_on:
+        - rabbitmq
+        - articleservice
+    environment:
+      RABBITMQ_HOST: rabbitmq
+
+
+
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
