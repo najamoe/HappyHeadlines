@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Xml;
 
-namespace api.Models
+namespace ArticleService.Models
 {
     public class Article
     {
