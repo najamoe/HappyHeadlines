@@ -1,4 +1,4 @@
-﻿using ArticleService.Data;
+﻿using ArticleService.Infrastructure;
 using ArticleService.Models;
 using ArticleService.Interfaces;
 using Microsoft.EntityFrameworkCore;
