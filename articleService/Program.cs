@@ -1,4 +1,8 @@
-using ArticleService.Data;
+using ArticleService.Infrastructure;
+using ArticleService.Interfaces;
+using CacheService;
+using CacheService.Services;
+using Microsoft.AspNetCore.Mvc.TagHelpers.Cache;
 using Microsoft.EntityFrameworkCore;
 using Monitoring;
 
@@ -39,6 +43,28 @@ builder.Services.AddDbContext<GlobalDbContext>(options =>
 // --- Initialize Monitoring / OpenTelemetry / Serilog ---
 _ = MonitorService.TracerProvider; // forces static constructor to run early
 _ = MonitorService.Log;            // ensures Serilog logger is initialized
+
+// --- Dependency Injection for Repositories ---
+builder.Services.AddScoped<IArticleRepository, ArticleRepository>();
+
+// --- Redis and Article Cache setup ---
+var isDesignTime = AppDomain.CurrentDomain.GetAssemblies()
+    .Any(a => a.FullName?.StartsWith("Microsoft.EntityFrameworkCore.Design", StringComparison.OrdinalIgnoreCase) == true);
+
+if (!isDesignTime)
+{
+    // --- Redis and Article Cache setup ---
+    var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "redis:6379,abortConnect=false";
+    Console.WriteLine($"Using Redis connection string: {redisConnectionString}");
+
+    builder.Services.AddSingleton(new RedisCacheService(redisConnectionString));
+    builder.Services.AddSingleton<ArticleCacheService>();
+    builder.Services.AddHostedService<ArticleCacheBackgroundService>();
+}
+else
+{
+    Console.WriteLine("Skipping Redis and Background Services during EF migrations...");
+}
 
 
 builder.Services.AddCors(options =>
