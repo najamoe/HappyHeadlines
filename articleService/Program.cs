@@ -1,4 +1,4 @@
-using api.Data;
+using ArticleService.Data;
 using Microsoft.EntityFrameworkCore;
 using Monitoring;
 
@@ -50,6 +50,8 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod();
     });
 });
+
+
 
 
 var app = builder.Build();
