@@ -2,13 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using ArticleService.Data;
+using ArticleService.Infrastructure;
 using ArticleService.Models;
+using CacheService.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Monitoring;
 
-namespace ArticleService.controllers
+namespace ArticleService.Controllers
 {
     [Route("article")]
     [ApiController]
@@ -22,6 +23,7 @@ namespace ArticleService.controllers
         private readonly OceaniaDbContext _oceania;
         private readonly AntarcticaDbContext _antarctica;
         private readonly GlobalDbContext _global;
+        private readonly ArticleCacheService _cacheService;
 
         public ArticleController(
             AfricaDbContext africa,
@@ -31,7 +33,8 @@ namespace ArticleService.controllers
             SouthAmericaDbContext southAmerica,
             OceaniaDbContext oceania,
             AntarcticaDbContext antarctica,
-            GlobalDbContext global)
+            GlobalDbContext global,
+            ArticleCacheService articleCacheService)
         {
             _africa = africa;
             _asia = asia;
@@ -41,6 +44,7 @@ namespace ArticleService.controllers
             _oceania = oceania;
             _antarctica = antarctica;
             _global = global;
+            _cacheService = articleCacheService;
         }
 
         // Helper to select DbContext based on continent
@@ -63,79 +67,127 @@ namespace ArticleService.controllers
         [HttpGet("by-continent/{continent}")]
         public async Task<IActionResult> GetAllByContinent([FromRoute] string continent)
         {
-            // Start an OpenTelemetry activity
             using var activity = MonitorService.ActivitySource.StartActivity("GetAllByContinent");
+            try
             {
+                var db = GetDbContext(continent);
+                var articles = await db.Set<Article>().ToListAsync();
 
-                try
-                {
-                    MonitorService.Log.Information("Continent received: {Continent}", continent);
+                await Task.Delay(3000); // Simulate processing delay
 
-                    var db = GetDbContext(continent);
-                    var articles = await db.Set<Article>().ToListAsync();
-
-                    await Task.Delay(3000); // Simulate some processing delay
-
-                    // Log to seq
-                    MonitorService.Log.Information("Fetched {Count} articles for continent {Continent}", articles.Count, continent);
-
-                    return Ok(articles);
-                }
-                catch (Exception ex)
-                {
-                    MonitorService.Log.Error(ex, "Error fetching articles for continent {Continent}", continent);
-                    return BadRequest(new { error = ex.Message });
-                }
+                MonitorService.Log.Information("Fetched {Count} articles for continent {Continent}", articles.Count, continent);
+                return Ok(articles);
+            }
+            catch (Exception ex)
+            {
+                MonitorService.Log.Error(ex, "Error fetching articles for continent {Continent}", continent);
+                return BadRequest(new { error = ex.Message });
             }
         }
 
         [HttpGet("{id}")]
-        public IActionResult GetById([FromQuery] string continent, [FromRoute] int id)
+        public async Task<IActionResult> GetById([FromQuery] string continent, [FromRoute] int id)
         {
-            var db = GetDbContext(continent);
-            var article = db.Set<Article>().Find(id);
-            if (article == null) return NotFound();
-            return Ok(article);
+            using var activity = Monitoring.MonitorService.ActivitySource.StartActivity("GetArticleById");
+
+            try
+            {
+                // Try cache first
+                var cachedArticle = await _cacheService.GetArticleAsync(continent.ToLower(), id.ToString());
+                if (cachedArticle != null)
+                {
+                    Monitoring.MonitorService.Log.Information("Cache hit for article {ArticleId} ({Continent})", id, continent);
+                    return Ok(cachedArticle);
+                }
+
+                Monitoring.MonitorService.Log.Information("Cache miss for article {ArticleId} ({Continent})", id, continent);
+
+                // Fetch from DB
+                var db = GetDbContext(continent);
+                var article = await db.Set<Article>().FindAsync(id);
+                if (article == null)
+                    return NotFound();
+
+                var dto = new CacheService.Dtos.ArticleDto
+                {
+                    Id = article.Id.ToString(),
+                    Title = article.Title,
+                    Content = article.Content,
+                    Author = article.Author,
+                    PublishedAt = article.PublishedAt
+                };
+
+                await _cacheService.SetArticleAsync(continent.ToLower(), dto);
+                return Ok(dto);
+            }
+            catch (Exception ex)
+            {
+                Monitoring.MonitorService.Log.Error(ex, "Error fetching article {ArticleId} from {Continent}", id, continent);
+                return BadRequest(new { error = ex.Message });
+            }
         }
 
         [HttpPost]
-        public IActionResult Create([FromQuery] string continent, [FromBody] Article article)
+        public async Task<IActionResult> Create([FromQuery] string continent, [FromBody] Article article)
         {
             if (article == null) return BadRequest();
 
             var db = GetDbContext(continent);
             db.Set<Article>().Add(article);
-            db.SaveChanges();
+            await db.SaveChangesAsync();
 
+            var dto = new CacheService.Dtos.ArticleDto
+            {
+                Id = article.Id.ToString(),
+                Title = article.Title,
+                Content = article.Content,
+                Author = article.Author,
+                PublishedAt = article.PublishedAt
+            };
+
+            await _cacheService.SetArticleAsync(continent.ToLower(), dto);
             return CreatedAtAction(nameof(GetById), new { id = article.Id, continent }, article);
         }
 
         [HttpPut("{id}")]
-        public IActionResult Update([FromQuery] string continent, [FromRoute] int id, [FromBody] Article updatedArticle)
+        public async Task<IActionResult> Update([FromQuery] string continent, [FromRoute] int id, [FromBody] Article updatedArticle)
         {
             if (updatedArticle == null || updatedArticle.Id != id) return BadRequest();
 
             var db = GetDbContext(continent);
-            var existingArticle = db.Set<Article>().Find(id);
+            var existingArticle = await db.Set<Article>().FindAsync(id);
             if (existingArticle == null) return NotFound();
 
             existingArticle.Author = updatedArticle.Author;
             existingArticle.Title = updatedArticle.Title;
             existingArticle.Content = updatedArticle.Content;
 
-            db.SaveChanges();
+            await db.SaveChangesAsync();
+
+            var dto = new CacheService.Dtos.ArticleDto
+            {
+                Id = existingArticle.Id.ToString(),
+                Title = existingArticle.Title,
+                Content = existingArticle.Content,
+                Author = existingArticle.Author,
+                PublishedAt = existingArticle.PublishedAt
+            };
+
+            await _cacheService.SetArticleAsync(continent.ToLower(), dto);
             return NoContent();
         }
 
         [HttpDelete("{id}")]
-        public IActionResult Delete([FromQuery] string continent, [FromRoute] int id)
+        public async Task<IActionResult> Delete([FromQuery] string continent, [FromRoute] int id)
         {
             var db = GetDbContext(continent);
-            var article = db.Set<Article>().Find(id);
+            var article = await db.Set<Article>().FindAsync(id);
             if (article == null) return NotFound();
 
             db.Set<Article>().Remove(article);
-            db.SaveChanges();
+            await db.SaveChangesAsync();
+
+            await _cacheService.RemoveArticleAsync(continent.ToLower(), article.Id.ToString());
             return NoContent();
         }
     }
