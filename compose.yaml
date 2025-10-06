@@ -7,10 +7,8 @@ services:
       dockerfile: ArticleService/Dockerfile
     ports:
       - "8080:8080"
-    depends_on:
-      - redis
-    environment:
-      - ConnectionStrings__Redis=redis:6379
+   
+ 
 
   commentservice:
     build:
@@ -43,8 +41,8 @@ services:
 
   draftservice:
     build:
-     context: .
-     dockerfile: DraftService/Dockerfile
+      context: .
+      dockerfile: DraftService/Dockerfile
     ports:
       - "8084:8080" 
 
@@ -55,10 +53,10 @@ services:
     ports:
       - "8085:8080"
     depends_on:
-     rabbitmq:
-      condition: service_healthy
-     articleservice:
-      condition: service_started
+      rabbitmq:
+        condition: service_healthy
+      articleservice:
+        condition: service_started
     environment:
       RABBITMQ_HOST: rabbitmq
   
@@ -73,7 +71,6 @@ services:
     environment:
       RABBITMQ_HOST: rabbitmq
 
-
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
@@ -81,35 +78,35 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-     RABBITMQ_DEFAULT_USER: guest
-     RABBITMQ_DEFAULT_PASS: guest
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
     healthcheck:
-     test: ["CMD", "rabbitmqctl", "status"]
-     interval: 5s
-     retries: 5
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 5s
+      retries: 5
+
   seq:
     image: datalust/seq:latest    
     ports:
-       - "5341:5341"
-       - "5342:80"
+      - "5341:5341"
+      - "5342:80"
     volumes:
-       - rps_seq_data:/data
+      - rps_seq_data:/data
     environment:
-       - ACCEPT_EULA=Y
-       - SEQ_FIRSTRUN_NOAUTHENTICATION=true
+      - ACCEPT_EULA=Y
+      - SEQ_FIRSTRUN_NOAUTHENTICATION=true
 
   zipkin:
     image: openzipkin/zipkin
     ports:
-       - "9411:9411"
+      - "9411:9411"
 
   redis:
-     image: redis:latest
-     container_name: redis
-     ports:
-       - "6379:6379"
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
 
 
-# Define the named volume
 volumes:
   rps_seq_data:
