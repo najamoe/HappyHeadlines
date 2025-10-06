@@ -44,6 +44,9 @@ builder.Services.AddDbContext<GlobalDbContext>(options =>
 _ = MonitorService.TracerProvider; // forces static constructor to run early
 _ = MonitorService.Log;            // ensures Serilog logger is initialized
 
+// expose prometheus metrics at /metrics
+app.MapPrometheusScrapingEndpoint();
+
 // --- Dependency Injection for Repositories ---
 builder.Services.AddScoped<IArticleRepository, ArticleRepository>();
 
