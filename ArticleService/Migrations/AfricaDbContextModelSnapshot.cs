@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace ArticleService.Data.Migrations.Africa
+namespace ArticleService.Migrations
 {
     [DbContext(typeof(AfricaDbContext))]
     partial class AfricaDbContextModelSnapshot : ModelSnapshot
