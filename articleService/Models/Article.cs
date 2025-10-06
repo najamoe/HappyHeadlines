@@ -12,6 +12,7 @@ namespace ArticleService.Models
         public required string Author { get; set; }
         public required string Title { get; set; }
         public required string Content { get; set; }
+        public DateTime PublishedAt { get; set; } = DateTime.UtcNow;
 
     }
 }
