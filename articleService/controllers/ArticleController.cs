@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using api.Data;
-using api.Models;
+using ArticleService.Data;
+using ArticleService.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Monitoring;
 
-namespace api.controllers
+namespace ArticleService.controllers
 {
     [Route("article")]
     [ApiController]
