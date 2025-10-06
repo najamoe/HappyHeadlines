@@ -18,6 +18,8 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.12.0" />
 	<PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.12.0" />
     <PackageReference Include="RabbitMQ.Client" Version="7.1.2" />
+    <PackageReference Include="StackExchange.Redis.Extensions.AspNetCore" Version="11.0.0" />
+    <PackageReference Include="StackExchange.Redis.Extensions.System.Text.Json" Version="11.0.0" />
 	<PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.6" />
 	<PackageReference Include="Swashbuckle.AspNetCore.Swagger" Version="9.0.6" />
 	<PackageReference Include="Swashbuckle.AspNetCore.SwaggerGen" Version="9.0.6" />

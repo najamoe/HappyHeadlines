@@ -8,5 +8,6 @@ namespace CacheService.Config
 {
     internal class RedisConfig
     {
+
     }
 }
