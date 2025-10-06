@@ -1,7 +1,7 @@
 using ArticleService.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace ArticleService.Data
+namespace ArticleService.Infrastructure
 {
     public class AfricaDbContext : DbContext
     {
