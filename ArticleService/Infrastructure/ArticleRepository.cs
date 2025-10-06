@@ -3,7 +3,7 @@ using ArticleService.Models;
 using ArticleService.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace api.Infrastructure
+namespace ArticleService.Infrastructure
 {
     public class ArticleRepository : IArticleRepository
     {
@@ -36,7 +36,7 @@ namespace api.Infrastructure
             _global = global;
         }
 
-        public async Task<IEnumerable<Article>> GetArticlesFromLast14DaysAsync()
+        public async Task<IEnumerable<Article>> GetRecentArticlesAsync(int days)
         {
             var since = DateTime.UtcNow.AddDays(-14);
 
@@ -59,5 +59,28 @@ namespace api.Infrastructure
                 .Concat(antarctica)
                 .Concat(global);
         }
+
+        public async Task<Article?> GetArticleByIdAsync(string id)
+        {
+            var articleId = int.Parse(id);
+            var article = await _africa.Articles.FindAsync(articleId)
+                ?? await _asia.Articles.FindAsync(articleId)
+                ?? await _europe.Articles.FindAsync(articleId)
+                ?? await _northAmerica.Articles.FindAsync(articleId)
+                ?? await _southAmerica.Articles.FindAsync(articleId)
+                ?? await _oceania.Articles.FindAsync(articleId)
+                ?? await _antarctica.Articles.FindAsync(articleId)
+                ?? await _global.Articles.FindAsync(articleId);
+            return article;
+        }
+
+        public async Task CreateArticleAsync(Article article)
+        {
+            // For simplicity, we'll add all new articles to the Global database.
+            await _global.Articles.AddAsync(article);
+            await _global.SaveChangesAsync();
+        }
+
+
     }
 }
