@@ -1,11 +1,12 @@
 using CommentService.Data;
 using CommentService.Models;
+using CacheService.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 using Polly.CircuitBreaker;
 
 namespace CommentService.Controllers
@@ -18,18 +19,62 @@ namespace CommentService.Controllers
         private readonly HttpClient _articleClient;
         private readonly HttpClient _profanityClient;
         private readonly ILogger<CommentController> _logger;
+        private readonly CommentCacheService _commentCacheService;
 
         public CommentController(
             CommentDbContext context,
             IHttpClientFactory httpClientFactory,
-            ILogger<CommentController> logger)
+            ILogger<CommentController> logger,
+            CommentCacheService commentCacheService)
         {
             _context = context;
             _articleClient = httpClientFactory.CreateClient("ArticleService");
             _profanityClient = httpClientFactory.CreateClient("ProfanityService");
             _logger = logger;
+            _commentCacheService = commentCacheService;
         }
 
+        // -------------------- GET --------------------
+        [HttpGet("{articleId}")]
+        public async Task<IActionResult> GetCommentsByArticleId(int articleId)
+        {
+            if (articleId <= 0)
+                return BadRequest("Invalid article ID.");
+
+            // Try cache first
+            var cachedComments = await _commentCacheService.GetCommentsAsync(articleId);
+            if (cachedComments != null)
+            {
+                _logger.LogInformation("Cache HIT for comments of article {ArticleId}", articleId);
+                return Ok(cachedComments);
+            }
+
+            _logger.LogInformation("Cache MISS for comments of article {ArticleId}", articleId);
+
+            // If its a cash miss it fetches from DB
+            var dbComments = await _context.Comments
+                .Where(c => c.ArticleId == articleId)
+                .ToListAsync();
+
+            if (!dbComments.Any())
+                return NotFound($"No comments found for article {articleId}");
+
+            // Store in cache (will trigger LRU eviction if needed)
+            await _commentCacheService.SetCommentsAsync(
+            articleId,
+                dbComments.Select(c => new CacheService.Dtos.CommentDto
+                {
+                Id = c.Id,
+                ArticleId = c.ArticleId,
+                Text = c.Text,
+                Author = c.Author,
+                CreatedAt = DateTime.UtcNow             
+                }).ToList()
+                );
+            return Ok(dbComments);
+        }
+
+        // -------------------- POST --------------------
         [HttpPost]
         public async Task<IActionResult> Create([FromQuery] string continent, [FromBody] Comment comment)
         {
@@ -39,12 +84,12 @@ namespace CommentService.Controllers
             if (string.IsNullOrWhiteSpace(continent))
                 return BadRequest("Continent is required.");
 
-            // Check if the article exists on the specified continent
+            // Check if the article exists
             var articleResponse = await _articleClient.GetAsync($"/article/{comment.ArticleId}?continent={continent}");
             if (!articleResponse.IsSuccessStatusCode)
                 return BadRequest("Article not found on the specified continent.");
 
-            // Prepare JSON for profanity check
+            // Profanity check
             var json = JsonSerializer.Serialize(new { text = comment.Text });
             _logger.LogInformation("Sending JSON to ProfanityService: {Json}", json);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -78,6 +123,9 @@ namespace CommentService.Controllers
                 _context.Comments.Add(comment);
                 await _context.SaveChangesAsync();
 
+                // Optional: remove from cache so new comment is loaded next time
+                await _commentCacheService.RemoveCommentsAsync(comment.ArticleId);
+
                 _logger.LogInformation("Comment saved successfully with ID {CommentId}", comment.Id);
                 return CreatedAtAction(nameof(Create), new { id = comment.Id }, comment);
             }
@@ -98,7 +146,6 @@ namespace CommentService.Controllers
             }
         }
 
-        // DTO for profanity check response
         public class ProfanityCheckResult
         {
             public bool isClean { get; set; }
