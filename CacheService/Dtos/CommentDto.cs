@@ -8,9 +8,9 @@ namespace CacheService.Dtos
 {
     public class CommentDto
     {
-        public string Id { get; set; } = default!;
-        public string ArticleId { get; set; } = default!;
-        public string Content { get; set; } = default!;
+        public int Id { get; set; } = default!;
+        public int ArticleId { get; set; } = default!;
+        public string Text { get; set; } = default!;
         public string Author { get; set; } = default!;
         public DateTime CreatedAt { get; set; }
     }
