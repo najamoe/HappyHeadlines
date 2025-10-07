@@ -35,32 +35,32 @@ namespace CommentService.Controllers
         }
 
         // -------------------- GET --------------------
-        [HttpGet("{articleId}")]
-        public async Task<IActionResult> GetCommentsByArticleId(int articleId)
+        [HttpGet("{continent}/{articleId}")]
+        public async Task<IActionResult> GetCommentsByArticleId(string continent, int articleId)
         {
             if (articleId <= 0)
                 return BadRequest("Invalid article ID.");
 
             // Try cache first
-            var cachedComments = await _commentCacheService.GetCommentsAsync(articleId);
+            var cachedComments = await _commentCacheService.GetCommentsAsync(continent, articleId);
             if (cachedComments != null)
             {
-                _logger.LogInformation("Cache HIT for comments of article {ArticleId}", articleId);
+                _logger.LogInformation("Cache HIT for comments of article {continent}-{ArticleId}",continent, articleId);
                 return Ok(cachedComments);
             }
 
-            _logger.LogInformation("Cache MISS for comments of article {ArticleId}", articleId);
+            _logger.LogInformation("Cache MISS for comments of article {continent}-{ArticleId}", continent, articleId);
 
             // If its a cash miss it fetches from DB
             var dbComments = await _context.Comments
-                .Where(c => c.ArticleId == articleId)
+                .Where(c => c.ArticleId == articleId && c.Continent == continent)
                 .ToListAsync();
 
             if (!dbComments.Any())
-                return NotFound($"No comments found for article {articleId}");
+                return NotFound($"No comments found for article {articleId} in {continent}");
 
             // Store in cache (will trigger LRU eviction if needed)
-            await _commentCacheService.SetCommentsAsync(
+            await _commentCacheService.SetCommentsAsync( continent,
             articleId,
                 dbComments.Select(c => new CacheService.Dtos.CommentDto
                 {
@@ -124,7 +124,7 @@ namespace CommentService.Controllers
                 await _context.SaveChangesAsync();
 
                 // Optional: remove from cache so new comment is loaded next time
-                await _commentCacheService.RemoveCommentsAsync(comment.ArticleId);
+                await _commentCacheService.RemoveCommentsAsync(continent, comment.ArticleId);
 
                 _logger.LogInformation("Comment saved successfully with ID {CommentId}", comment.Id);
                 return CreatedAtAction(nameof(Create), new { id = comment.Id }, comment);

@@ -1,62 +1,79 @@
-using Microsoft.EntityFrameworkCore;
-using Polly;
-using Swashbuckle.AspNetCore.SwaggerGen;
-using Microsoft.OpenApi.Models;
-using Microsoft.AspNetCore.Builder;
 using CommentService.Data;
-
-
+using CacheService.Services;
+using Microsoft.EntityFrameworkCore;
+using Monitoring;
+using Prometheus;
+using OpenTelemetry.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
-var circuitBreakerPolicy = GetCircuitBreakerPolicy();
 
-static IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy()
-{
-    return Policy.HandleResult<HttpResponseMessage>(r => r.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable) // Error 503 (Service unavailable)
-                 .CircuitBreakerAsync(handledEventsAllowedBeforeBreaking: 3, durationOfBreak: TimeSpan.FromSeconds(30));
-}
-// If 3 failures occur, the breaker "opens" for 30 seconds. During this time, all calls will fail immediately.
-// After 30 seconds, the next call will be allowed to pass through. If it succeeds, the circuit "closes" and normal operation resumes.
+//Setup for server docker/local
 
+var isDocker = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
+var server = isDocker ? "host.docker.internal,1433" : "localhost,1433";
 
-// Add services to the container
-builder.Services.AddControllers();
-builder.Services.AddSwaggerGen();
+var connectionString = $"Server={server};Database=CommentDB;User Id=sa;Password=StrongPassw0rd!@#2025;Encrypt=True;TrustServerCertificate=True;";
+
+// --- Database ---
 builder.Services.AddDbContext<CommentDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("CommentDatabase")));
+    options.UseSqlServer(connectionString));
 
-// Register named HttpClient for ProfanityService
+// --- Monitoring initialization ---
+_ = MonitorService.Log;
+
+// --- Services / Swagger ---
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+
+
+// --- Redis and Comment Cache setup ---
+var isDesignTime = AppDomain.CurrentDomain.GetAssemblies()
+    .Any(a => a.FullName?.StartsWith("Microsoft.EntityFrameworkCore.Design", StringComparison.OrdinalIgnoreCase) == true);
+
+if (!isDesignTime)
+{
+    var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "redis:6379,abortConnect=false";
+    Console.WriteLine($"Using Redis connection string: {redisConnectionString}");
+
+    builder.Services.AddSingleton(new RedisCacheService(redisConnectionString));
+    builder.Services.AddSingleton<CommentCacheService>();
+}
+else
+{
+    Console.WriteLine("Skipping Redis setup during EF migrations...");
+}
+
+// --- HTTP Clients for other services ---
+builder.Services.AddHttpClient("ArticleService", c =>
+{
+    c.BaseAddress = new Uri("http://articleservice:8080");
+});
+
 builder.Services.AddHttpClient("ProfanityService", c =>
 {
-    c.BaseAddress = new Uri("http://profanityservice:8080/");
-})
-.AddPolicyHandler(circuitBreakerPolicy);
-builder.Services.AddHttpClient("ArticleService", client =>
-{
-    client.BaseAddress = new Uri("http://articleservice:8080/"); 
+    c.BaseAddress = new Uri("http://profanityservice:8080");
 });
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
-    {
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod();
-    });
-});
+
+// --- Prometheus metrics ---
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(builder => builder.AddPrometheusExporter());
 
 var app = builder.Build();
 
-app.UseCors();
+// --- Middleware ---
+app.UseHttpMetrics();
+app.MapMetrics();
 
-// swagger setup
+// app.UseHttpsRedirection();
+app.UseAuthorization();
+
+app.MapControllers();
+
+// --- Swagger ---
 app.UseSwagger();
 app.UseSwaggerUI();
 
-
-
-
-
-app.MapControllers();
 
 app.Run();
