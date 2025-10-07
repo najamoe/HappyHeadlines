@@ -1,4 +1,5 @@
 ﻿using CacheService.Dtos;
+using Monitoring;
 using System;
 
 namespace CacheService.Services
@@ -11,13 +12,25 @@ namespace CacheService.Services
         public ArticleCacheService(RedisCacheService redisCacheService)
         {
             _redisCacheService = redisCacheService;
+            MonitorService.Log.Information("ArticleCacheService initialized for {ServiceName}", MonitorService.ServiceName);
         }
 
         // Get from cache (continent)
         public async Task<ArticleDto?> GetArticleAsync(string continent, string id)
         {
             var key = $"{KeyPrefix}{continent}:{id}";
-            return await _redisCacheService.GetAsync<ArticleDto>(key);
+            var article = await _redisCacheService.GetAsync<ArticleDto>(key);
+
+            if (article != null)
+            {
+                MonitorService.RecordCacheHit();
+                MonitorService.Log.Information("Cache HIT for {Key}", key);
+                return article;
+            }
+
+            MonitorService.RecordCacheMiss();
+            MonitorService.Log.Information("Cache MISS for {Key}", key);
+            return null;
         }
 
         // Save to cache (used on cache miss or after DB update)

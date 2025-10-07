@@ -5,11 +5,17 @@ using CacheService.Services;
 using Microsoft.AspNetCore.Mvc.TagHelpers.Cache;
 using Microsoft.EntityFrameworkCore;
 using Monitoring;
+using Prometheus;
+using OpenTelemetry.Metrics;
 
 var builder = WebApplication.CreateBuilder(args);
 
 
-// Add services to the container.
+// --- Initialize Monitoring / OpenTelemetry / Serilog ---
+_ = MonitorService.Log;            // ensures Serilog logger is initialized
+
+
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -39,13 +45,6 @@ builder.Services.AddDbContext<AntarcticaDbContext>(options =>
 builder.Services.AddDbContext<GlobalDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("GlobalConnection")));
 
-
-// --- Initialize Monitoring / OpenTelemetry / Serilog ---
-_ = MonitorService.TracerProvider; // forces static constructor to run early
-_ = MonitorService.Log;            // ensures Serilog logger is initialized
-
-// expose prometheus metrics at /metrics
-app.MapPrometheusScrapingEndpoint();
 
 // --- Dependency Injection for Repositories ---
 builder.Services.AddScoped<IArticleRepository, ArticleRepository>();
@@ -84,6 +83,23 @@ builder.Services.AddCors(options =>
 
 
 var app = builder.Build();
+app.UseHttpMetrics();
+// expose prometheus metrics at /metrics
+app.MapMetrics();
+app.MapGet("/articles", () =>
+{
+    using var activity = MonitorService.ActivitySource.StartActivity("GetArticle");
+
+    MonitorService.RecordRequest();
+
+    var cacheHit = false; // replace with Redis logic
+    if (cacheHit)
+        MonitorService.RecordCacheHit();
+    else
+        MonitorService.RecordCacheMiss();
+
+    return Results.Ok("Article fetched");
+});
 
 app.UseCors();
 
