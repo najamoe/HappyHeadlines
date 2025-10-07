@@ -19,6 +19,7 @@ namespace CacheService.Services
         public async Task<ArticleDto?> GetArticleAsync(string continent, string id)
         {
             var key = $"{KeyPrefix}{continent}:{id}";
+            MonitorService.RecordRequest();
             var article = await _redisCacheService.GetAsync<ArticleDto>(key);
 
             if (article != null)
