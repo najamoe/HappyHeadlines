@@ -8,15 +8,21 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
+# Copy project files
+COPY ["CommentService/CommentService.csproj", "CommentService/"]
+COPY ["Monitoring/Monitoring.csproj", "Monitoring/"]
 
-COPY ["CommentService.csproj", "./"]
-RUN dotnet restore "./CommentService.csproj"
+# Restore dependencies
+RUN dotnet restore "CommentService/CommentService.csproj"
 
+# Copy everything
 COPY . .
-RUN dotnet build "./CommentService.csproj" -c $BUILD_CONFIGURATION -o /app/build
+
+# Build
+RUN dotnet build "CommentService/CommentService.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "./CommentService.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "CommentService/CommentService.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
