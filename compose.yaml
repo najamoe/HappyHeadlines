@@ -129,9 +129,14 @@ services:
     ports:
       - "9090:9090"
     volumes:
-     - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    depends_on:
-      - articleservice
+       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+       - prometheus-data:/prometheus
+    command:
+       - '--config.file=/etc/prometheus/prometheus.yml'
+       - '--storage.tsdb.path=/prometheus'
+       - '--storage.tsdb.retention.time=90d'   # Keep data for 3 months
+       - '--web.enable-lifecycle'
+    restart: unless-stopped
     networks:
       - default
 
@@ -154,5 +159,9 @@ services:
 
 
 volumes:
+  prometheus-data:
   rps_seq_data:
   grafana-storage: {}
+
+
+
