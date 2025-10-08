@@ -5,6 +5,9 @@ using Monitoring;
 using Prometheus;
 using OpenTelemetry.Metrics;
 
+// --- Monitoring / Logging ---
+_ = MonitorService.Log;
+
 var builder = WebApplication.CreateBuilder(args);
 
 //Setup for server docker/local

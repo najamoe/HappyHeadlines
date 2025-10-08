@@ -1,12 +1,14 @@
 using CommentService.Data;
 using CommentService.Models;
 using CacheService.Services;
+using Monitoring;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Diagnostics;
 using Polly.CircuitBreaker;
 
 namespace CommentService.Controllers
@@ -78,6 +80,7 @@ namespace CommentService.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromQuery] string continent, [FromBody] Comment comment)
         {
+            using var activity = MonitorService.ActivitySource.StartActivity("CreateComment");
             if (comment == null)
                 return BadRequest("Comment is null.");
 
@@ -85,9 +88,12 @@ namespace CommentService.Controllers
                 return BadRequest("Continent is required.");
 
             // Check if the article exists
-            var articleResponse = await _articleClient.GetAsync($"/article/{comment.ArticleId}?continent={continent}");
-            if (!articleResponse.IsSuccessStatusCode)
-                return BadRequest("Article not found on the specified continent.");
+            using (MonitorService.ActivitySource.StartActivity("CheckArticleExists"))
+            {
+                var articleResponse = await _articleClient.GetAsync($"/article/{comment.ArticleId}?continent={continent}");
+                if (!articleResponse.IsSuccessStatusCode)
+                    return BadRequest("Article not found on the specified continent.");
+            }
 
             // Profanity check
             var json = JsonSerializer.Serialize(new { text = comment.Text });
@@ -96,6 +102,7 @@ namespace CommentService.Controllers
 
             try
             {
+                using var profanityActivity = MonitorService.ActivitySource.StartActivity("ProfanityCheck");
                 var response = await _profanityClient.PostAsync("/api/profanity/check", content);
                 _logger.LogInformation("ProfanityService responded with status code: {StatusCode}", response.StatusCode);
 
@@ -120,11 +127,19 @@ namespace CommentService.Controllers
                 }
 
                 // Save comment
-                _context.Comments.Add(comment);
-                await _context.SaveChangesAsync();
+                using (MonitorService.ActivitySource.StartActivity("SaveCommentToDB"))
+                {
+                    _context.Comments.Add(comment);
+                    await _context.SaveChangesAsync();
+                }
 
-                // Optional: remove from cache so new comment is loaded next time
-                await _commentCacheService.RemoveCommentsAsync(continent, comment.ArticleId);
+
+                //  remove from cache so new comment is loaded next time someone requests comments for this article
+                //  Makes sure there are no stale comments in cache
+                using (MonitorService.ActivitySource.StartActivity("InvalidateCommentCache"))
+                { 
+                    await _commentCacheService.RemoveCommentsAsync(continent, comment.ArticleId);
+                }
 
                 _logger.LogInformation("Comment saved successfully with ID {CommentId}", comment.Id);
                 return CreatedAtAction(nameof(Create), new { id = comment.Id }, comment);
