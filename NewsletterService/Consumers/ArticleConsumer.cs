@@ -2,8 +2,10 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using Monitoring;
 using System.Text;
 using System.Text.Json;
+using System.Diagnostics;
 using NewsletterService.Infrastructure;
 
 namespace NewsletterService.Consumers
@@ -12,7 +14,7 @@ namespace NewsletterService.Consumers
     {
         private readonly RabbitMqConnection _rabbitMqConnection;
         private readonly ILogger<ArticleConsumer> _logger;
-        private const string QueueName = "ArticleQueue";
+        private const string QueueName = "ArticlePublishedQueue";
 
         public ArticleConsumer(RabbitMqConnection rabbitMqConnection, ILogger<ArticleConsumer> logger)
         {
@@ -22,6 +24,8 @@ namespace NewsletterService.Consumers
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            using var consumeActivity = Monitoring.MonitorService.ActivitySource.StartActivity("ConsumeArticleEvent", ActivityKind.Consumer);
+
             await _rabbitMqConnection.DeclareQueueAsync(QueueName);
 
             var channel = _rabbitMqConnection.Channel;
@@ -71,6 +75,8 @@ namespace NewsletterService.Consumers
         public required string Id { get; set; }
         public required string Title { get; set; }
         public required string Content { get; set; }
+        public required string Author { get; set; }
+        public required DateTime PublishedAt { get; set; }
         public required string TraceId { get; set; }
         
     }

@@ -7,6 +7,11 @@ scrape_configs:
     metrics_path: '/metrics'
     static_configs:
       - targets: ['articleservice:8080']
+  
+  - job_name: 'comment-service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['commentservice:8080']
 
   - job_name: 'redis'
     static_configs:

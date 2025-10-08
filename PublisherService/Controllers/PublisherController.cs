@@ -65,6 +65,8 @@ public class PublishController : ControllerBase
             Id = draft.Id.ToString(),
             Title = draft.Title,
             Content = draft.Content,
+            Author = draft.Author,
+            PublishedAt = DateTime.UtcNow,
             TraceId = activity?.TraceId.ToString() ?? Guid.NewGuid().ToString()
         };
 

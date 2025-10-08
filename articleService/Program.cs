@@ -1,65 +1,58 @@
 using ArticleService.Infrastructure;
-using ArticleService.Interfaces;
-using CacheService;
 using CacheService.Services;
-using Microsoft.AspNetCore.Mvc.TagHelpers.Cache;
+using ArticleService.Consumers;
 using Microsoft.EntityFrameworkCore;
 using Monitoring;
 using Prometheus;
 using OpenTelemetry.Metrics;
 
+// --- Monitoring / Logging ---
+_ = MonitorService.Log;
+
 var builder = WebApplication.CreateBuilder(args);
 
-
-// --- Initialize Monitoring / OpenTelemetry / Serilog ---
-_ = MonitorService.Log;            // ensures Serilog logger is initialized
-
-
-
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// --- MVC / Swagger ---
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddDbContext<AfricaDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("AfricaConnection")));
+// --- Dynamic SQL Server connection setup ---
+var isDocker = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
+var server = isDocker ? "host.docker.internal,1433" : "localhost,1433";
 
-builder.Services.AddDbContext<AsiaDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("AsiaConnection")));
+// Helper function for clean setup
+string BuildConnection(string dbName) =>
+    $"Server={server};Database={dbName};User Id=sa;Password=StrongPassw0rd!@#2025;Encrypt=True;TrustServerCertificate=True;";
 
-builder.Services.AddDbContext<EuropeDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("EuropeConnection")));
+// --- Databases ---
+builder.Services.AddDbContext<AfricaDbContext>(o => o.UseSqlServer(BuildConnection("AfricaDB")));
+builder.Services.AddDbContext<AsiaDbContext>(o => o.UseSqlServer(BuildConnection("AsiaDB")));
+builder.Services.AddDbContext<EuropeDbContext>(o => o.UseSqlServer(BuildConnection("EuropeDB")));
+builder.Services.AddDbContext<NorthAmericaDbContext>(o => o.UseSqlServer(BuildConnection("NorthAmericaDB")));
+builder.Services.AddDbContext<SouthAmericaDbContext>(o => o.UseSqlServer(BuildConnection("SouthAmericaDB")));
+builder.Services.AddDbContext<OceaniaDbContext>(o => o.UseSqlServer(BuildConnection("OceaniaDB")));
+builder.Services.AddDbContext<AntarcticaDbContext>(o => o.UseSqlServer(BuildConnection("AntarcticaDB")));
+builder.Services.AddDbContext<GlobalDbContext>(o => o.UseSqlServer(BuildConnection("GlobalDB")));
 
-builder.Services.AddDbContext<NorthAmericaDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("NorthAmericaConnection")));
+// --- RabbitMQ ---
+builder.Services.AddHostedService<ArticleConsumer>();
 
-builder.Services.AddDbContext<SouthAmericaDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("SouthAmericaConnection")));
+// --- ProfanityService ---
+builder.Services.AddHttpClient("ProfanityService", c =>
+{
+    c.BaseAddress = new Uri("http://profanityservice:8080");
+});
 
-builder.Services.AddDbContext<OceaniaDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("OceaniaConnection")));
-
-builder.Services.AddDbContext<AntarcticaDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("AntarcticaConnection")));
-
-builder.Services.AddDbContext<GlobalDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("GlobalConnection")));
-
-
-// --- Dependency Injection for Repositories ---
-builder.Services.AddScoped<IArticleRepository, ArticleRepository>();
-
-// --- Redis and Article Cache setup ---
+// --- Redis + Article Cache ---
 var isDesignTime = AppDomain.CurrentDomain.GetAssemblies()
     .Any(a => a.FullName?.StartsWith("Microsoft.EntityFrameworkCore.Design", StringComparison.OrdinalIgnoreCase) == true);
 
 if (!isDesignTime)
 {
-    // --- Redis and Article Cache setup ---
     var redisConnectionString = builder.Configuration.GetConnectionString("Redis") ?? "redis:6379,abortConnect=false";
     Console.WriteLine($"Using Redis connection string: {redisConnectionString}");
 
-    builder.Services.AddSingleton(new RedisCacheService(redisConnectionString));
+    builder.Services.AddSingleton<RedisCacheService>(_ => new RedisCacheService(redisConnectionString));
     builder.Services.AddSingleton<ArticleCacheService>();
     builder.Services.AddHostedService<ArticleCacheBackgroundService>();
 }
@@ -68,50 +61,24 @@ else
     Console.WriteLine("Skipping Redis and Background Services during EF migrations...");
 }
 
-
+// --- CORS ---
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
-    {
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod();
-    });
+        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 });
 
-
-
-
+// --- Build app ---
 var app = builder.Build();
+
 app.UseHttpMetrics();
-// expose prometheus metrics at /metrics
 app.MapMetrics();
-app.MapGet("/articles", () =>
-{
-    using var activity = MonitorService.ActivitySource.StartActivity("GetArticle");
-
-    MonitorService.RecordRequest();
-
-    var cacheHit = false; // replace with Redis logic
-    if (cacheHit)
-        MonitorService.RecordCacheHit();
-    else
-        MonitorService.RecordCacheMiss();
-
-    return Results.Ok("Article fetched");
-});
 
 app.UseCors();
-
 app.UseSwagger();
 app.UseStaticFiles();
 app.UseSwaggerUI();
 
-
-//app.UseHttpsRedirection();
-
 app.MapControllers();
 
 app.Run();
-
-

@@ -16,7 +16,7 @@ namespace CacheService.Services
         }
 
         // Get from cache (continent)
-        public async Task<ArticleDto?> GetArticleAsync(string continent, string id)
+        public async Task<ArticleDto?> GetArticleAsync(string continent, int id)
         {
             var key = $"{KeyPrefix}{continent}:{id}";
             MonitorService.RecordRequest();
@@ -42,7 +42,7 @@ namespace CacheService.Services
         }
 
         // Remove from cache (after delete)
-        public async Task RemoveArticleAsync(string continent, string id)
+        public async Task RemoveArticleAsync(string continent, int id)
         {
             var key = $"{KeyPrefix}{continent}:{id}";
             await _redisCacheService.RemoveAsync(key);

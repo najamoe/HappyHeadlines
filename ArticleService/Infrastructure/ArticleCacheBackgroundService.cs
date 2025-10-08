@@ -1,6 +1,5 @@
 ﻿using CacheService.Dtos;
 using CacheService.Services;
-using ArticleService.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -85,7 +84,7 @@ namespace ArticleService.Infrastructure
                         {
                             var dto = new ArticleDto
                             {
-                                Id = article.Id.ToString(),
+                                Id = article.Id,
                                 Title = article.Title,
                                 Content = article.Content,
                                 Author = article.Author,

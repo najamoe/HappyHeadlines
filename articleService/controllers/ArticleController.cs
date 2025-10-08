@@ -8,6 +8,15 @@ using CacheService.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Monitoring;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Diagnostics;
+using Polly.CircuitBreaker;
+using RabbitMQ.Client;
+
 
 namespace ArticleService.Controllers
 {
@@ -93,7 +102,7 @@ namespace ArticleService.Controllers
             try
             {
                 // Try cache first
-                var cachedArticle = await _cacheService.GetArticleAsync(continent.ToLower(), id.ToString());
+                var cachedArticle = await _cacheService.GetArticleAsync(continent.ToLower(), id);
                 if (cachedArticle != null)
                 {
                     Monitoring.MonitorService.Log.Information("Cache hit for article {ArticleId} ({Continent})", id, continent);
@@ -110,7 +119,7 @@ namespace ArticleService.Controllers
 
                 var dto = new CacheService.Dtos.ArticleDto
                 {
-                    Id = article.Id.ToString(),
+                    Id = article.Id,
                     Title = article.Title,
                     Content = article.Content,
                     Author = article.Author,
@@ -128,26 +137,146 @@ namespace ArticleService.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromQuery] string continent, [FromBody] Article article)
+        public async Task<IActionResult> Create([FromQuery] string continent, [FromBody] Article article, [FromServices] IHttpClientFactory httpClientFactory)
         {
-            if (article == null) return BadRequest();
+            if (article == null)
+                return BadRequest("Article is null.");
 
-            var db = GetDbContext(continent);
-            db.Set<Article>().Add(article);
-            await db.SaveChangesAsync();
+            if (string.IsNullOrWhiteSpace(continent))
+                return BadRequest("Continent is required.");
 
-            var dto = new CacheService.Dtos.ArticleDto
+            using var activity = MonitorService.ActivitySource.StartActivity("CreateArticle");
+
+            var _profanityClient = httpClientFactory.CreateClient("ProfanityService");
+
+            try
             {
-                Id = article.Id.ToString(),
-                Title = article.Title,
-                Content = article.Content,
-                Author = article.Author,
-                PublishedAt = article.PublishedAt
-            };
+                // --- Profanity check on Title and Content ---
+                var textToCheck = $"{article.Title} {article.Content}";
+                var json = JsonSerializer.Serialize(new { text = textToCheck });
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            await _cacheService.SetArticleAsync(continent.ToLower(), dto);
-            return CreatedAtAction(nameof(GetById), new { id = article.Id, continent }, article);
+                MonitorService.Log.Information("Sending article text to ProfanityService: {Json}", json);
+
+                var response = await _profanityClient.PostAsync("/api/profanity/check", content);
+                using var profanityCheck = MonitorService.ActivitySource.StartActivity("CallProfanityService");
+                MonitorService.Log.Information("ProfanityService responded with status code: {StatusCode}", response.StatusCode);
+
+                var result = await response.Content.ReadAsStringAsync();
+                MonitorService.Log.Information("ProfanityService response body: {ResponseBody}", result);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    MonitorService.Log.Error("Error checking profanity: {StatusCode}", response.StatusCode);
+                    return StatusCode((int)response.StatusCode, "Error checking profanity.");
+                }
+
+                var check = JsonSerializer.Deserialize<ProfanityCheckResult>(result, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (check != null && !check.isClean)
+                {
+                    MonitorService.Log.Warning("Article contains profanity in title or content.");
+                    return BadRequest("Article contains profanity and cannot be published.");
+                }
+
+                // --- Save Article if clean ---
+                var db = GetDbContext(continent);
+                db.Set<Article>().Add(article);
+                
+                await db.SaveChangesAsync();
+                using var dbSave = MonitorService.ActivitySource.StartActivity("SaveArticleToDatabase");
+
+                using (var cacheActivity = MonitorService.ActivitySource.StartActivity("AddArticleToCache"))
+                {
+                    var dto = new CacheService.Dtos.ArticleDto
+                    {
+                        Id = article.Id,
+                        Title = article.Title,
+                        Content = article.Content,
+                        Author = article.Author,
+                        PublishedAt = article.PublishedAt
+                    };
+
+                    await _cacheService.SetArticleAsync(continent.ToLower(), dto);
+                }
+
+                // --- Publish to RabbitMQ (simple trace) ---
+                using var publishActivity = MonitorService.ActivitySource.StartActivity("PublishArticleEvent");
+
+                var factory = new ConnectionFactory
+                {
+                    HostName = "rabbitmq",
+                    UserName = "guest",
+                    Password = "guest",
+                    VirtualHost = "/",
+                    Port = 5672
+                };
+
+                await using var connection = await factory.CreateConnectionAsync();
+                await using var channel = await connection.CreateChannelAsync();
+
+                await channel.QueueDeclareAsync(
+                    queue: "ArticleQueue",
+                    durable: true,
+                    exclusive: false,
+                    autoDelete: false
+                );
+
+               
+
+                var articleDto = new
+                {
+                    Id = article.Id,
+                    article.Title,
+                    article.Content,
+                    article.Author,
+                    article.PublishedAt,
+                    TraceId = Activity.Current?.TraceId.ToString() // simple trace linkage
+                };
+
+                var message = JsonSerializer.Serialize(articleDto);
+                var body = Encoding.UTF8.GetBytes(message);
+
+                var props = new BasicProperties();
+                await channel.BasicPublishAsync(
+                    exchange: "",
+                    routingKey: "ArticleQueue",
+                    mandatory: true,
+                    basicProperties: props,
+                    body: body
+                );
+
+                MonitorService.Log.Information("Published article {Title} to queue", article.Title);
+
+
+                MonitorService.Log.Information("Article {ArticleId} created successfully in {Continent}", article.Id, continent);
+                return CreatedAtAction(nameof(GetById), new { id = article.Id, continent }, article);
+            }
+            catch (BrokenCircuitException ex)
+            {
+                MonitorService.Log.Error(ex, "Profanity service is unavailable (circuit breaker).");
+                return StatusCode(503, "Profanity service is unavailable. Please try again later.");
+            }
+            catch (HttpRequestException ex)
+            {
+                MonitorService.Log.Error(ex, "Error connecting to ProfanityService.");
+                return StatusCode(503, "Error connecting to ProfanityService.");
+            }
+            catch (JsonException ex)
+            {
+                MonitorService.Log.Error(ex, "Failed to deserialize ProfanityService response.");
+                return StatusCode(500, "Invalid response from ProfanityService.");
+            }
         }
+
+        public class ProfanityCheckResult
+        {
+            public bool isClean { get; set; }
+        }
+
 
         [HttpPut("{id}")]
         public async Task<IActionResult> Update([FromQuery] string continent, [FromRoute] int id, [FromBody] Article updatedArticle)
@@ -166,11 +295,12 @@ namespace ArticleService.Controllers
 
             var dto = new CacheService.Dtos.ArticleDto
             {
-                Id = existingArticle.Id.ToString(),
+                Id = existingArticle.Id,
                 Title = existingArticle.Title,
                 Content = existingArticle.Content,
                 Author = existingArticle.Author,
                 PublishedAt = existingArticle.PublishedAt
+
             };
 
             await _cacheService.SetArticleAsync(continent.ToLower(), dto);
@@ -187,7 +317,7 @@ namespace ArticleService.Controllers
             db.Set<Article>().Remove(article);
             await db.SaveChangesAsync();
 
-            await _cacheService.RemoveArticleAsync(continent.ToLower(), article.Id.ToString());
+            await _cacheService.RemoveArticleAsync(continent.ToLower(), article.Id);
             return NoContent();
         }
     }

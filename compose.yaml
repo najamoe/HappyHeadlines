@@ -7,8 +7,11 @@ services:
       dockerfile: ArticleService/Dockerfile
     ports:
       - "8080:8080"
-   
- 
+    depends_on:
+     rabbitmq:
+      condition: service_healthy
+    environment:
+      RABBITMQ_HOST: rabbitmq
 
   commentservice:
     build:
@@ -144,8 +147,12 @@ services:
       - prometheus
     networks:
       - default
+    volumes:
+      - grafana-storage:/var/lib/grafana
+   
 
 
 
 volumes:
   rps_seq_data:
+  grafana-storage: {}

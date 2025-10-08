@@ -1,4 +1,7 @@
 ﻿using RabbitMQ.Client;
+using OpenTelemetry.Context.Propagation;
+using System.Diagnostics;
+using OpenTelemetry;
 using PublisherService.Models;
 using System.Text;
 using System.Text.Json;
@@ -35,16 +38,25 @@ namespace PublisherService.Infrastructure
         {
             var json = JsonSerializer.Serialize(article);
             var body = Encoding.UTF8.GetBytes(json);
+            await _channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false);
 
             var props = new BasicProperties
             {
                 DeliveryMode = (DeliveryModes)2, // persistent
                 ContentType = "application/json",
-                Headers = new Dictionary<string, object?>
-                {
-                    ["traceId"] = article.TraceId ?? Guid.NewGuid().ToString()
-                }
+                Headers = new Dictionary<string, object?>()
             };
+
+            // Inject OpenTelemetry trace context into message headers
+            var activityContext = Activity.Current?.Context ?? default;
+            var propagator = Propagators.DefaultTextMapPropagator;
+            propagator.Inject(
+                new PropagationContext(activityContext, Baggage.Current),
+                props.Headers,
+                (headers, key, value) => headers[key] = value
+            );
+
+            props.Headers["traceId"] = activityContext.TraceId.ToString();
 
             await _channel.BasicPublishAsync(
                 exchange: "",
