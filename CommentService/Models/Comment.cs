@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Xml;
 using StackExchange.Redis;
@@ -14,7 +15,7 @@ namespace CommentService.Models
         public string? Author { get; set; }
         public string? Text { get; set; }
         public int ArticleId { get; set; }
-        public String Continent { get; set; } = "Global";
+        public string Continent { get; set; } = "Global"; 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }
