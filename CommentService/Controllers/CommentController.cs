@@ -2,14 +2,11 @@ using CacheService.Services;
 using CommentService.Data;
 using CommentService.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Shared.Models;
 using System.Text;
 using System.Text.Json;
-
-// Aliases to avoid "Comment" ambiguity
-using CommentEntity = CommentService.Models.Comment;
-using CommentDto = Shared.Models.CommentDto;
 
 namespace CommentService.Controllers
 {
@@ -36,20 +33,53 @@ namespace CommentService.Controllers
             _commentCacheService = commentCacheService;
         }
 
-        // POST /api/comments/{continent}
-        [HttpPost("{continent}")]
-        public async Task<IActionResult> Create([FromRoute] string continent, [FromBody] CommentDto commentDto)
+        // GET /api/comments/{continent}/{articleId}
+        [HttpGet("{continent}/{articleId}")]
+        public async Task<IActionResult> Get([FromRoute] string continent, [FromRoute] int articleId)
         {
             if (string.IsNullOrWhiteSpace(continent))
                 return BadRequest("Continent is required.");
 
-            // Check if article exists
-            var articleResp = await _articleClient.GetAsync($"/article/{commentDto.ArticleId}?continent={continent}");
+            var cachedComments = await _commentCacheService.GetCommentsAsync(continent, articleId);
+            if (cachedComments != null && cachedComments.Any())
+            {
+                _logger.LogInformation("Cache HIT for article {ArticleId} in {Continent}", articleId, continent);
+                return Ok(cachedComments);
+            }
+
+            _logger.LogInformation("Cache MISS for article {ArticleId} in {Continent}", articleId, continent);
+
+            var dbComments = await _context.Comments
+                .Where(c => c.ArticleId == articleId && c.Continent == continent)
+                .Select(c => new CommentDto
+                {
+                    Id = c.Id,
+                    Author = c.Author,
+                    Text = c.Text,
+                    ArticleId = c.ArticleId,
+                    CreatedAt = c.CreatedAt
+                })
+                .ToListAsync();
+
+            if (dbComments == null || dbComments.Count == 0)
+                return NotFound("No comments found for this article.");
+
+            await _commentCacheService.SetCommentsAsync(continent, articleId, dbComments);
+            return Ok(dbComments);
+        }
+
+        // POST /api/comments/{continent}
+        [HttpPost("{continent}")]
+        public async Task<IActionResult> Create([FromRoute] string continent, [FromBody] CommentDto dto)
+        {
+            if (string.IsNullOrWhiteSpace(continent))
+                return BadRequest("Continent is required.");
+
+            var articleResp = await _articleClient.GetAsync($"/article/{dto.ArticleId}?continent={continent}");
             if (!articleResp.IsSuccessStatusCode)
                 return BadRequest("Article not found on the specified continent.");
 
-            // Profanity check
-            var payload = JsonSerializer.Serialize(new { text = commentDto.Text });
+            var payload = JsonSerializer.Serialize(new { text = dto.Text });
             var resp = await _profanityClient.PostAsync("/api/profanity/check",
                 new StringContent(payload, Encoding.UTF8, "application/json"));
             if (!resp.IsSuccessStatusCode)
@@ -62,12 +92,11 @@ namespace CommentService.Controllers
             if (check is { isClean: false })
                 return BadRequest("Comment contains profanity.");
 
-            // Map DTO to entity and set continent automatically
-            var entity = new CommentEntity
+            var entity = new Comment
             {
-                Author = commentDto.Author,
-                Text = commentDto.Text,
-                ArticleId = commentDto.ArticleId,
+                Author = dto.Author,
+                Text = dto.Text,
+                ArticleId = dto.ArticleId,
                 Continent = continent,
                 CreatedAt = DateTime.UtcNow
             };
@@ -77,7 +106,6 @@ namespace CommentService.Controllers
 
             await _commentCacheService.RemoveCommentsAsync(continent, entity.ArticleId);
 
-            // Map back to DTO for response
             var result = new CommentDto
             {
                 Id = entity.Id,
@@ -90,7 +118,7 @@ namespace CommentService.Controllers
             return CreatedAtAction(nameof(Create), new { continent, id = result.Id }, result);
         }
 
-        public class ProfanityCheckResult
+        private class ProfanityCheckResult
         {
             public bool isClean { get; set; }
         }

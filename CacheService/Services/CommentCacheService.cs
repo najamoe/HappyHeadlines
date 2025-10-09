@@ -1,4 +1,4 @@
-using CacheService.Dtos;
+using Shared.Models;
 using Shared;
 using Prometheus;
 using System.Collections.Concurrent;
@@ -9,7 +9,7 @@ namespace CacheService.Services
     {
         private readonly RedisCacheService _redisCacheService;
         private const string KeyPrefix = "comment:";
-        private const int MaxArticles = 30;     
+        private const int MaxArticles = 30;     // TODO Change naming to comment
 
         // key = last access timestamp
         private readonly ConcurrentDictionary<string, DateTime> _accessMap = new();
@@ -23,6 +23,8 @@ namespace CacheService.Services
         // Try read from cache
         public async Task<List<CommentDto>?> GetCommentsAsync(string continent, int articleId)
         {
+            using var activity = MonitorService.ActivitySource.StartActivity("GetCommentsFromCache");
+
             var key = $"{KeyPrefix}{continent}{articleId}";
             MonitorService.RecordRequest();
 
@@ -30,22 +32,28 @@ namespace CacheService.Services
             if (cached != null)
             {
                 MonitorService.RecordCacheHit();
-                Touch(key);
+                Touch(key); // updating access time for LRU
+                activity?.SetTag("cache.result", "hit");
                 return cached;
             }
 
             MonitorService.RecordCacheMiss();
+            activity?.SetTag("cache.result", "miss");
             return null;
         }
 
         // Add to cache after a miss
         public async Task SetCommentsAsync(string continent, int articleId, List<CommentDto> comments)
         {
+            using var activity = MonitorService.ActivitySource.StartActivity("SetCommentsInCache");
             var key = $"{KeyPrefix}{continent}{articleId}";
             await _redisCacheService.SetAsync(key, comments, TimeSpan.FromHours(1));
 
             Touch(key);
             EvictIfNeeded();
+
+            activity?.SetTag("cache.key", key);
+            activity?.SetTag("cache.size", comments.Count);
         }
 
         // Optional manual removal

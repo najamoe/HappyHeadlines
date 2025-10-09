@@ -17,7 +17,7 @@ namespace CacheService.Services
         public async Task SetArticleAsync(ArticleDto article, TimeSpan? expiry = null)
         {
             if (article == null) return;
-            var key = $"{KeyPrefix}{article.Id}";
+            var key = $"{KeyPrefix}{article.Id}"; // Building the cache key
             await _redis.SetAsync(key, article, expiry ?? TimeSpan.FromHours(1));
             MonitorService.Log.Information("Cached global article {Id}", article.Id);
         }

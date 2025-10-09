@@ -1,9 +1,10 @@
-using CommentService.Data;
 using CacheService.Services;
+using CommentService.Data;
 using Microsoft.EntityFrameworkCore;
-using Shared;
-using Prometheus;
 using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
+using Prometheus;
+using Shared;
 
 // --- Shared / Logging ---
 _ = MonitorService.Log;
@@ -23,6 +24,8 @@ builder.Services.AddDbContext<CommentDbContext>(options =>
 
 // --- Shared initialization ---
 _ = MonitorService.Log;
+
+
 
 // --- Services / Swagger ---
 builder.Services.AddControllers();
@@ -61,7 +64,20 @@ builder.Services.AddHttpClient("ProfanityService", c =>
 
 // --- Prometheus metrics ---
 builder.Services.AddOpenTelemetry()
-    .WithMetrics(builder => builder.AddPrometheusExporter());
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddEntityFrameworkCoreInstrumentation()
+            .AddSource(MonitorService.ActivitySource.Name)
+            .AddZipkinExporter(o =>
+            {
+                o.Endpoint = new Uri("http://zipkin:9411/api/v2/spans");
+            });
+    })
+    .WithMetrics(metrics => metrics.AddPrometheusExporter());
+
 
 var app = builder.Build();
 
