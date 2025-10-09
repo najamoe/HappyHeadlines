@@ -1,22 +1,12 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using ArticleService.Infrastructure;
 using ArticleService.Models;
 using CacheService.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Monitoring;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using Shared;
+using Shared.Models;
+using Shared.Profanity;
 using System.Diagnostics;
-using Polly.CircuitBreaker;
-using RabbitMQ.Client;
-
 
 namespace ArticleService.Controllers
 {
@@ -24,15 +14,10 @@ namespace ArticleService.Controllers
     [ApiController]
     public class ArticleController : ControllerBase
     {
-        private readonly AfricaDbContext _africa;
-        private readonly AsiaDbContext _asia;
-        private readonly EuropeDbContext _europe;
-        private readonly NorthAmericaDbContext _northAmerica;
-        private readonly SouthAmericaDbContext _southAmerica;
-        private readonly OceaniaDbContext _oceania;
-        private readonly AntarcticaDbContext _antarctica;
+        private readonly Dictionary<string, DbContext> _dbContexts;
         private readonly GlobalDbContext _global;
-        private readonly ArticleCacheService _cacheService;
+        private readonly ArticleCacheService _cache;
+        private readonly ProfanityClient _profanity;
 
         public ArticleController(
             AfricaDbContext africa,
@@ -43,53 +28,47 @@ namespace ArticleService.Controllers
             OceaniaDbContext oceania,
             AntarcticaDbContext antarctica,
             GlobalDbContext global,
-            ArticleCacheService articleCacheService)
+            ArticleCacheService cache,
+            ProfanityClient profanity)
         {
-            _africa = africa;
-            _asia = asia;
-            _europe = europe;
-            _northAmerica = northAmerica;
-            _southAmerica = southAmerica;
-            _oceania = oceania;
-            _antarctica = antarctica;
+            _dbContexts = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["africa"] = africa,
+                ["asia"] = asia,
+                ["europe"] = europe,
+                ["northamerica"] = northAmerica,
+                ["southamerica"] = southAmerica,
+                ["oceania"] = oceania,
+                ["antarctica"] = antarctica
+            };
             _global = global;
-            _cacheService = articleCacheService;
+            _cache = cache;
+            _profanity = profanity;
         }
 
-        // Helper to select DbContext based on continent
-        private DbContext GetDbContext(string continent)
+        private DbContext GetDb(string continent)
         {
-            return continent.ToLower() switch
-            {
-                "africa" => _africa,
-                "asia" => _asia,
-                "europe" => _europe,
-                "northamerica" => _northAmerica,
-                "southamerica" => _southAmerica,
-                "oceania" => _oceania,
-                "antarctica" => _antarctica,
-                "global" => _global,
-                _ => throw new Exception("Unknown continent")
-            };
+            if (string.IsNullOrWhiteSpace(continent))
+                throw new ArgumentException("Continent required");
+            if (!_dbContexts.TryGetValue(continent, out var db))
+                throw new ArgumentException($"Unknown continent: {continent}");
+            return db;
         }
 
         [HttpGet("by-continent/{continent}")]
-        public async Task<IActionResult> GetAllByContinent([FromRoute] string continent)
+        public async Task<IActionResult> GetAllByContinent(string continent)
         {
             using var activity = MonitorService.ActivitySource.StartActivity("GetAllByContinent");
             try
             {
-                var db = GetDbContext(continent);
+                var db = GetDb(continent);
                 var articles = await db.Set<Article>().ToListAsync();
-
-                await Task.Delay(3000); // Simulate processing delay
-
-                MonitorService.Log.Information("Fetched {Count} articles for continent {Continent}", articles.Count, continent);
+                MonitorService.Log.Information("Fetched {Count} articles for {Continent}", articles.Count, continent);
                 return Ok(articles);
             }
             catch (Exception ex)
             {
-                MonitorService.Log.Error(ex, "Error fetching articles for continent {Continent}", continent);
+                MonitorService.Log.Error(ex, "Error fetching articles for {Continent}", continent);
                 return BadRequest(new { error = ex.Message });
             }
         }
@@ -97,227 +76,197 @@ namespace ArticleService.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById([FromQuery] string continent, [FromRoute] int id)
         {
-            using var activity = Monitoring.MonitorService.ActivitySource.StartActivity("GetArticleById");
+            using var activity = MonitorService.ActivitySource.StartActivity("GetArticleById");
 
             try
             {
-                // Try cache first
-                var cachedArticle = await _cacheService.GetArticleAsync(continent.ToLower(), id);
-                if (cachedArticle != null)
+                if (continent.Equals("global", StringComparison.OrdinalIgnoreCase))
                 {
-                    Monitoring.MonitorService.Log.Information("Cache hit for article {ArticleId} ({Continent})", id, continent);
-                    return Ok(cachedArticle);
+                    // Try cache for GlobalDB
+                    var cached = await _cache.GetArticleAsync(id);
+                    if (cached != null)
+                    {
+                        MonitorService.Log.Information("Cache hit for article {Id}", id);
+                        return Ok(cached);
+                    }
+
+                    MonitorService.Log.Information("Cache miss for article {Id}", id);
+
+                    var globalArticle = await _global.Set<GlobalArticle>().FindAsync(id);
+                    if (globalArticle == null)
+                        return NotFound();
+
+                    var globalDto = new ArticleDto
+                    {
+                        Id = globalArticle.Id,
+                        Title = globalArticle.Title,
+                        Content = globalArticle.Content,
+                        Author = globalArticle.Author,
+                        PublishedAt = globalArticle.PublishedAt,
+                        SourceArticleId = globalArticle.SourceArticleId,
+                        Continent = globalArticle.SourceContinent ?? "Unknown",
+                        TraceId = Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString()
+                    };
+
+                    await _cache.SetArticleAsync(globalDto);
+                    return Ok(globalDto);
                 }
 
-                Monitoring.MonitorService.Log.Information("Cache miss for article {ArticleId} ({Continent})", id, continent);
-
-                // Fetch from DB
-                var db = GetDbContext(continent);
+                // For continent DBs
+                var db = GetDb(continent);
                 var article = await db.Set<Article>().FindAsync(id);
                 if (article == null)
                     return NotFound();
 
-                var dto = new CacheService.Dtos.ArticleDto
+                var dto = new ArticleDto
                 {
                     Id = article.Id,
                     Title = article.Title,
                     Content = article.Content,
                     Author = article.Author,
-                    PublishedAt = article.PublishedAt
+                    PublishedAt = article.PublishedAt,
+                    Continent = article.Continent,
+                    TraceId = Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString()
                 };
 
-                await _cacheService.SetArticleAsync(continent.ToLower(), dto);
                 return Ok(dto);
             }
             catch (Exception ex)
             {
-                Monitoring.MonitorService.Log.Error(ex, "Error fetching article {ArticleId} from {Continent}", id, continent);
+                MonitorService.Log.Error(ex, "Error fetching article {Id}", id);
                 return BadRequest(new { error = ex.Message });
             }
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create([FromQuery] string continent, [FromBody] Article article, [FromServices] IHttpClientFactory httpClientFactory)
+        public async Task<IActionResult> Create([FromQuery] string continent, [FromBody] Article article)
         {
             if (article == null)
                 return BadRequest("Article is null.");
 
-            if (string.IsNullOrWhiteSpace(continent))
-                return BadRequest("Continent is required.");
-
             using var activity = MonitorService.ActivitySource.StartActivity("CreateArticle");
-
-            var _profanityClient = httpClientFactory.CreateClient("ProfanityService");
 
             try
             {
-                // --- Profanity check on Title and Content ---
-                var textToCheck = $"{article.Title} {article.Content}";
-                var json = JsonSerializer.Serialize(new { text = textToCheck });
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var text = $"{article.Title} {article.Content}";
+                if (!await _profanity.IsCleanAsync(text))
+                    return BadRequest("Article contains profanity.");
 
-                MonitorService.Log.Information("Sending article text to ProfanityService: {Json}", json);
-
-                var response = await _profanityClient.PostAsync("/api/profanity/check", content);
-                using var profanityCheck = MonitorService.ActivitySource.StartActivity("CallProfanityService");
-                MonitorService.Log.Information("ProfanityService responded with status code: {StatusCode}", response.StatusCode);
-
-                var result = await response.Content.ReadAsStringAsync();
-                MonitorService.Log.Information("ProfanityService response body: {ResponseBody}", result);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    MonitorService.Log.Error("Error checking profanity: {StatusCode}", response.StatusCode);
-                    return StatusCode((int)response.StatusCode, "Error checking profanity.");
-                }
-
-                var check = JsonSerializer.Deserialize<ProfanityCheckResult>(result, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
-
-                if (check != null && !check.isClean)
-                {
-                    MonitorService.Log.Warning("Article contains profanity in title or content.");
-                    return BadRequest("Article contains profanity and cannot be published.");
-                }
-
-                // --- Save Article if clean ---
-                var db = GetDbContext(continent);
+                // Save to continent DB
+                var db = GetDb(continent);
+                article.Continent = continent;
                 db.Set<Article>().Add(article);
-                
                 await db.SaveChangesAsync();
-                using var dbSave = MonitorService.ActivitySource.StartActivity("SaveArticleToDatabase");
 
-                using (var cacheActivity = MonitorService.ActivitySource.StartActivity("AddArticleToCache"))
+                // Create global copy
+                var globalArticle = new GlobalArticle
                 {
-                    var dto = new CacheService.Dtos.ArticleDto
-                    {
-                        Id = article.Id,
-                        Title = article.Title,
-                        Content = article.Content,
-                        Author = article.Author,
-                        PublishedAt = article.PublishedAt
-                    };
-
-                    await _cacheService.SetArticleAsync(continent.ToLower(), dto);
-                }
-
-                // --- Publish to RabbitMQ (simple trace) ---
-                using var publishActivity = MonitorService.ActivitySource.StartActivity("PublishArticleEvent");
-
-                var factory = new ConnectionFactory
-                {
-                    HostName = "rabbitmq",
-                    UserName = "guest",
-                    Password = "guest",
-                    VirtualHost = "/",
-                    Port = 5672
+                    Author = article.Author,
+                    Title = article.Title,
+                    Content = article.Content,
+                    PublishedAt = article.PublishedAt,
+                    SourceArticleId = article.Id,
+                    SourceContinent = continent
                 };
 
-                await using var connection = await factory.CreateConnectionAsync();
-                await using var channel = await connection.CreateChannelAsync();
+                _global.Set<GlobalArticle>().Add(globalArticle);
+                await _global.SaveChangesAsync();
 
-                await channel.QueueDeclareAsync(
-                    queue: "ArticleQueue",
-                    durable: true,
-                    exclusive: false,
-                    autoDelete: false
-                );
-
-               
-
-                var articleDto = new
+                // Cache global version
+                var dto = new ArticleDto
                 {
-                    Id = article.Id,
-                    article.Title,
-                    article.Content,
-                    article.Author,
-                    article.PublishedAt,
-                    TraceId = Activity.Current?.TraceId.ToString() // simple trace linkage
+                    Id = globalArticle.Id,
+                    Title = globalArticle.Title,
+                    Content = globalArticle.Content,
+                    Author = globalArticle.Author,
+                    PublishedAt = globalArticle.PublishedAt,
+                    SourceArticleId = globalArticle.SourceArticleId,
+                    Continent = globalArticle.SourceContinent ?? "Global",
+                    TraceId = Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString()
                 };
 
-                var message = JsonSerializer.Serialize(articleDto);
-                var body = Encoding.UTF8.GetBytes(message);
+                await _cache.SetArticleAsync(dto);
 
-                var props = new BasicProperties();
-                await channel.BasicPublishAsync(
-                    exchange: "",
-                    routingKey: "ArticleQueue",
-                    mandatory: true,
-                    basicProperties: props,
-                    body: body
-                );
+                MonitorService.Log.Information(
+                    "Created article {ContinentId} in {Continent}, global copy {GlobalId}",
+                    article.Id, continent, globalArticle.Id);
 
-                MonitorService.Log.Information("Published article {Title} to queue", article.Title);
-
-
-                MonitorService.Log.Information("Article {ArticleId} created successfully in {Continent}", article.Id, continent);
-                return CreatedAtAction(nameof(GetById), new { id = article.Id, continent }, article);
+                return CreatedAtAction(nameof(GetById),
+                    new { id = globalArticle.Id, continent = "global" },
+                    new { ContinentId = article.Id, GlobalId = globalArticle.Id });
             }
-            catch (BrokenCircuitException ex)
+            catch (Exception ex)
             {
-                MonitorService.Log.Error(ex, "Profanity service is unavailable (circuit breaker).");
-                return StatusCode(503, "Profanity service is unavailable. Please try again later.");
-            }
-            catch (HttpRequestException ex)
-            {
-                MonitorService.Log.Error(ex, "Error connecting to ProfanityService.");
-                return StatusCode(503, "Error connecting to ProfanityService.");
-            }
-            catch (JsonException ex)
-            {
-                MonitorService.Log.Error(ex, "Failed to deserialize ProfanityService response.");
-                return StatusCode(500, "Invalid response from ProfanityService.");
+                MonitorService.Log.Error(ex, "Error creating article in {Continent}", continent);
+                return StatusCode(500, "Internal server error.");
             }
         }
-
-        public class ProfanityCheckResult
-        {
-            public bool isClean { get; set; }
-        }
-
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update([FromQuery] string continent, [FromRoute] int id, [FromBody] Article updatedArticle)
+        public async Task<IActionResult> Update([FromQuery] string continent, [FromRoute] int id, [FromBody] Article update)
         {
-            if (updatedArticle == null || updatedArticle.Id != id) return BadRequest();
+            if (update == null || update.Id != id)
+                return BadRequest();
 
-            var db = GetDbContext(continent);
-            var existingArticle = await db.Set<Article>().FindAsync(id);
-            if (existingArticle == null) return NotFound();
+            var db = GetDb(continent);
+            var existing = await db.Set<Article>().FindAsync(id);
+            if (existing == null)
+                return NotFound();
 
-            existingArticle.Author = updatedArticle.Author;
-            existingArticle.Title = updatedArticle.Title;
-            existingArticle.Content = updatedArticle.Content;
-
+            existing.Title = update.Title;
+            existing.Content = update.Content;
+            existing.Author = update.Author;
             await db.SaveChangesAsync();
 
-            var dto = new CacheService.Dtos.ArticleDto
+            // Update corresponding global copy
+            var globalCopy = await _global.Set<GlobalArticle>()
+                .FirstOrDefaultAsync(a => a.SourceArticleId == id && a.SourceContinent == continent);
+
+            if (globalCopy != null)
             {
-                Id = existingArticle.Id,
-                Title = existingArticle.Title,
-                Content = existingArticle.Content,
-                Author = existingArticle.Author,
-                PublishedAt = existingArticle.PublishedAt
+                globalCopy.Title = existing.Title;
+                globalCopy.Content = existing.Content;
+                globalCopy.Author = existing.Author;
+                await _global.SaveChangesAsync();
 
-            };
+                var dto = new ArticleDto
+                {
+                    Id = globalCopy.Id,
+                    Title = globalCopy.Title,
+                    Content = globalCopy.Content,
+                    Author = globalCopy.Author,
+                    PublishedAt = globalCopy.PublishedAt,
+                    SourceArticleId = globalCopy.SourceArticleId,
+                    Continent = globalCopy.SourceContinent ?? "Global",
+                    TraceId = Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString()
+                };
+                await _cache.SetArticleAsync(dto);
+            }
 
-            await _cacheService.SetArticleAsync(continent.ToLower(), dto);
             return NoContent();
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete([FromQuery] string continent, [FromRoute] int id)
         {
-            var db = GetDbContext(continent);
+            var db = GetDb(continent);
             var article = await db.Set<Article>().FindAsync(id);
-            if (article == null) return NotFound();
+            if (article == null)
+                return NotFound();
 
-            db.Set<Article>().Remove(article);
+            db.Remove(article);
             await db.SaveChangesAsync();
 
-            await _cacheService.RemoveArticleAsync(continent.ToLower(), article.Id);
+            // Delete global copy + cache
+            var globalCopy = await _global.Set<GlobalArticle>()
+                .FirstOrDefaultAsync(a => a.SourceArticleId == id && a.SourceContinent == continent);
+            if (globalCopy != null)
+            {
+                _global.Remove(globalCopy);
+                await _global.SaveChangesAsync();
+                await _cache.RemoveArticleAsync(globalCopy.Id);
+            }
+
             return NoContent();
         }
     }

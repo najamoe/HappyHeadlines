@@ -2,17 +2,17 @@
 
 #nullable disable
 
-namespace CommentService.Migrations
+namespace ArticleService.Data.Migrations.NorthAmerica
 {
     /// <inheritdoc />
-    public partial class addContinentToTabel : Migration
+    public partial class InitialCreate_NorthAmerica : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
                 name: "Continent",
-                table: "Comments",
+                table: "Articles",
                 type: "nvarchar(max)",
                 nullable: false,
                 defaultValue: "");
@@ -23,7 +23,7 @@ namespace CommentService.Migrations
         {
             migrationBuilder.DropColumn(
                 name: "Continent",
-                table: "Comments");
+                table: "Articles");
         }
     }
 }

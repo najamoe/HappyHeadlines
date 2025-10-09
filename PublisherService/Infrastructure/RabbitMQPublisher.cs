@@ -1,8 +1,8 @@
-﻿using RabbitMQ.Client;
+using RabbitMQ.Client;
 using OpenTelemetry.Context.Propagation;
 using System.Diagnostics;
 using OpenTelemetry;
-using PublisherService.Models;
+using Shared.Models;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;

@@ -38,8 +38,15 @@ namespace ArticleService.Data.Migrations.Antarctica
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Continent")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("PublishedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<int?>("SourceArticleId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Title")
                         .IsRequired()

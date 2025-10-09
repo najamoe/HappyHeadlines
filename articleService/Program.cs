@@ -2,11 +2,12 @@ using ArticleService.Infrastructure;
 using CacheService.Services;
 using ArticleService.Consumers;
 using Microsoft.EntityFrameworkCore;
-using Monitoring;
+using Shared;
+using Shared.Profanity;
 using Prometheus;
 using OpenTelemetry.Metrics;
 
-// --- Monitoring / Logging ---
+// --- Shared / Logging ---
 _ = MonitorService.Log;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -42,6 +43,7 @@ builder.Services.AddHttpClient("ProfanityService", c =>
 {
     c.BaseAddress = new Uri("http://profanityservice:8080");
 });
+builder.Services.AddScoped<ProfanityClient>();
 
 // --- Redis + Article Cache ---
 var isDesignTime = AppDomain.CurrentDomain.GetAssemblies()

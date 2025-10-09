@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Json;
+using System.Net.Http.Json;
 using System.Threading.Tasks;
 
 namespace PublisherService.Clients
@@ -24,6 +24,8 @@ namespace PublisherService.Clients
         public string Title { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
         public string Author { get; set; } = string.Empty;
+
+        public required string Continent { get; set; }
         public int Status { get; set; } 
     }
 }

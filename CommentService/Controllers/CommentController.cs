@@ -1,7 +1,7 @@
 using CommentService.Data;
 using CommentService.Models;
 using CacheService.Services;
-using Monitoring;
+using Shared;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

@@ -1,4 +1,4 @@
-﻿using OpenTelemetry;
+using OpenTelemetry;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Prometheus;
@@ -6,7 +6,7 @@ using Serilog;
 using System.Diagnostics;
 using System.Reflection;
 
-namespace Monitoring
+namespace Shared
 {
     public static class MonitorService
     {

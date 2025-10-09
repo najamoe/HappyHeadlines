@@ -1,4 +1,4 @@
-﻿using RabbitMQ.Client;
+using RabbitMQ.Client;
 using System;
 using System.Threading.Tasks;
 using SubscriberService.Models;

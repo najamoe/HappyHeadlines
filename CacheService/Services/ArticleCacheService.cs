@@ -1,51 +1,50 @@
-﻿using CacheService.Dtos;
-using Monitoring;
-using System;
+using Shared.Models;
+using Shared;
 
 namespace CacheService.Services
 {
     public class ArticleCacheService
     {
-        private readonly RedisCacheService _redisCacheService;
-        private const string KeyPrefix = "article:";
+        private readonly RedisCacheService _redis;
+        private const string KeyPrefix = "article:global:";
 
-        public ArticleCacheService(RedisCacheService redisCacheService)
+        public ArticleCacheService(RedisCacheService redis)
         {
-            _redisCacheService = redisCacheService;
-            MonitorService.Log.Information("ArticleCacheService initialized for {ServiceName}", MonitorService.ServiceName);
+            _redis = redis;
+            MonitorService.Log.Information("ArticleCacheService initialized for {Service}", MonitorService.ServiceName);
         }
 
-        // Get from cache (continent)
-        public async Task<ArticleDto?> GetArticleAsync(string continent, int id)
+        public async Task SetArticleAsync(ArticleDto article, TimeSpan? expiry = null)
         {
-            var key = $"{KeyPrefix}{continent}:{id}";
-            MonitorService.RecordRequest();
-            var article = await _redisCacheService.GetAsync<ArticleDto>(key);
+            if (article == null) return;
+            var key = $"{KeyPrefix}{article.Id}";
+            await _redis.SetAsync(key, article, expiry ?? TimeSpan.FromHours(1));
+            MonitorService.Log.Information("Cached global article {Id}", article.Id);
+        }
 
-            if (article != null)
+        public async Task<ArticleDto?> GetArticleAsync(int id)
+        {
+            var key = $"{KeyPrefix}{id}";
+            MonitorService.RecordRequest();
+
+            var article = await _redis.GetAsync<ArticleDto>(key);
+            if (article == null)
             {
-                MonitorService.RecordCacheHit();
-                MonitorService.Log.Information("Cache HIT for {Key}", key);
-                return article;
+                MonitorService.RecordCacheMiss();
+                MonitorService.Log.Information("Cache MISS for {Key}", key);
+                return null;
             }
 
-            MonitorService.RecordCacheMiss();
-            MonitorService.Log.Information("Cache MISS for {Key}", key);
-            return null;
+            MonitorService.RecordCacheHit();
+            MonitorService.Log.Information("Cache HIT for {Key}", key);
+            return article;
         }
 
-        // Save to cache (used on cache miss or after DB update)
-        public async Task SetArticleAsync(string continent, ArticleDto article, TimeSpan? expiry = null)
+        public async Task RemoveArticleAsync(int id)
         {
-            var key = $"{KeyPrefix}{continent}:{article.Id}";
-            await _redisCacheService.SetAsync(key, article, expiry ?? TimeSpan.FromHours(1));
-        }
-
-        // Remove from cache (after delete)
-        public async Task RemoveArticleAsync(string continent, int id)
-        {
-            var key = $"{KeyPrefix}{continent}:{id}";
-            await _redisCacheService.RemoveAsync(key);
+            var key = $"{KeyPrefix}{id}";
+            await _redis.RemoveAsync(key);
+            MonitorService.Log.Information("Removed cached article {Key}", key);
         }
     }
 }

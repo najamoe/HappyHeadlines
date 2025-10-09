@@ -1,4 +1,4 @@
-﻿namespace CommentService.Interfaces
+namespace CommentService.Interfaces
 {
     public interface ICommentRepository
     {

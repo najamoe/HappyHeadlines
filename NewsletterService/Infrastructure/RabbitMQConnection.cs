@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Connections;
+using Microsoft.AspNetCore.Connections;
 using RabbitMQ.Client;
 using System.Threading.Channels;
 

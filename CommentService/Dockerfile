@@ -10,7 +10,7 @@ WORKDIR /src
 
 # Copy project files
 COPY ["CommentService/CommentService.csproj", "CommentService/"]
-COPY ["Monitoring/Monitoring.csproj", "Monitoring/"]
+COPY ["Shared/Shared.csproj", "Shared/"]
 
 # Restore dependencies
 RUN dotnet restore "CommentService/CommentService.csproj"

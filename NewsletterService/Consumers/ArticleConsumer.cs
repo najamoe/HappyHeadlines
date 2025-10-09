@@ -2,7 +2,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using Monitoring;
+using Shared;
+using Shared.Models;
 using System.Text;
 using System.Text.Json;
 using System.Diagnostics;
@@ -24,7 +25,7 @@ namespace NewsletterService.Consumers
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            using var consumeActivity = Monitoring.MonitorService.ActivitySource.StartActivity("ConsumeArticleEvent", ActivityKind.Consumer);
+            using var consumeActivity = Shared.MonitorService.ActivitySource.StartActivity("ConsumeArticleEvent", ActivityKind.Consumer);
 
             await _rabbitMqConnection.DeclareQueueAsync(QueueName);
 
@@ -40,7 +41,7 @@ namespace NewsletterService.Consumers
                     var message = Encoding.UTF8.GetString(body);
 
                     // Deserialize ArticleDTO
-                    var article = JsonSerializer.Deserialize<ArticleDTO>(message);
+                    var article = JsonSerializer.Deserialize<ArticleDto>(message);
 
                     _logger.LogInformation("Received Article: {Title} (TraceId: {TraceId})", article?.Title, article.TraceId);
 
@@ -69,15 +70,5 @@ namespace NewsletterService.Consumers
         }
     }
 
-    // Example DTO (you already have one in PublisherService, so maybe share via shared lib)
-    public class ArticleDTO
-    {
-        public required string Id { get; set; }
-        public required string Title { get; set; }
-        public required string Content { get; set; }
-        public required string Author { get; set; }
-        public required DateTime PublishedAt { get; set; }
-        public required string TraceId { get; set; }
-        
-    }
+  
 }

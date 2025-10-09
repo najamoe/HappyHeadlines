@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using DraftService.Data;
 using DraftService.Models;
-using Monitoring;
+using Shared;
 
 namespace DraftService.Controllers
 {

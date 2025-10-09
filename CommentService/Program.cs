@@ -1,11 +1,11 @@
 using CommentService.Data;
 using CacheService.Services;
 using Microsoft.EntityFrameworkCore;
-using Monitoring;
+using Shared;
 using Prometheus;
 using OpenTelemetry.Metrics;
 
-// --- Monitoring / Logging ---
+// --- Shared / Logging ---
 _ = MonitorService.Log;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,7 +21,7 @@ var connectionString = $"Server={server};Database=CommentDB;User Id=sa;Password=
 builder.Services.AddDbContext<CommentDbContext>(options =>
     options.UseSqlServer(connectionString));
 
-// --- Monitoring initialization ---
+// --- Shared initialization ---
 _ = MonitorService.Log;
 
 // --- Services / Swagger ---

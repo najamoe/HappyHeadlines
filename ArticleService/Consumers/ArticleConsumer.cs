@@ -5,9 +5,9 @@ using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using ArticleService.Infrastructure;
-using CacheService.Dtos;
 using Microsoft.EntityFrameworkCore;
-using Monitoring;
+using Shared;
+using Shared.Models;
 using System.Diagnostics;
 
 namespace ArticleService.Consumers
@@ -74,7 +74,8 @@ namespace ArticleService.Consumers
                         Title = article.Title,
                         Content = article.Content,
                         Author = article.Author,
-                        PublishedAt = article.PublishedAt
+                        Continent = article.Continent,
+                        PublishedAt = article.PublishedAt                  
                     });
 
                     await db.SaveChangesAsync(stoppingToken);

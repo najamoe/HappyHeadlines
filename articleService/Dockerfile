@@ -8,7 +8,7 @@ WORKDIR /src
 
 # Copy csproj files
 COPY ["ArticleService/ArticleService.csproj", "ArticleService/"]
-COPY ["Monitoring/Monitoring.csproj", "Monitoring/"]
+COPY ["Shared/Shared.csproj", "Shared/"]
 
 # Restore dependencies
 RUN dotnet restore "ArticleService/ArticleService.csproj"

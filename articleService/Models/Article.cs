@@ -11,8 +11,17 @@ namespace ArticleService.Models
         public int Id { get; set; }
         public required string Author { get; set; }
         public required string Title { get; set; }
-        public required string Content { get; set; }
+        public required string Content { get; set; } 
+        public string Continent { get; set; } = "Global";
         public DateTime PublishedAt { get; set; } = DateTime.UtcNow;
 
+       
     }
+
+    public class GlobalArticle : Article
+    {
+        public int? SourceArticleId { get; set; }
+        public string? SourceContinent { get; set; }
+    }
+
 }

@@ -9,11 +9,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace ArticleService.Migrations
+namespace ArticleService.Migrations.Oceania
 {
-    [DbContext(typeof(AfricaDbContext))]
-    [Migration("20251006141600_InitialCreate")]
-    partial class InitialCreate
+    [DbContext(typeof(OceaniaDbContext))]
+    [Migration("20251009102313_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -41,8 +41,15 @@ namespace ArticleService.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Continent")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("PublishedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<int?>("SourceArticleId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Title")
                         .IsRequired()

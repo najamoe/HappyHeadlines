@@ -38,6 +38,10 @@ namespace ArticleService.Data.Migrations.Global
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Continent")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("PublishedAt")
                         .HasColumnType("datetime2");
 

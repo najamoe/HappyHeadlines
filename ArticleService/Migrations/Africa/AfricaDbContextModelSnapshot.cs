@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace ArticleService.Migrations
+namespace ArticleService.Migrations.Africa
 {
     [DbContext(typeof(AfricaDbContext))]
     partial class AfricaDbContextModelSnapshot : ModelSnapshot
@@ -38,8 +38,15 @@ namespace ArticleService.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Continent")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("PublishedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<int?>("SourceArticleId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Title")
                         .IsRequired()

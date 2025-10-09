@@ -1,5 +1,5 @@
-﻿using CacheService.Dtos;
-using Monitoring;
+using CacheService.Dtos;
+using Shared;
 using Prometheus;
 using System.Collections.Concurrent;
 
@@ -11,7 +11,7 @@ namespace CacheService.Services
         private const string KeyPrefix = "comment:";
         private const int MaxArticles = 30;     
 
-        // key → last access timestamp
+        // key = last access timestamp
         private readonly ConcurrentDictionary<string, DateTime> _accessMap = new();
 
         public CommentCacheService(RedisCacheService redisCacheService)

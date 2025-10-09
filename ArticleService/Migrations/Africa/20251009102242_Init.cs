@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace ArticleService.Migrations
+namespace ArticleService.Migrations.Africa
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class Init : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -20,7 +20,9 @@ namespace ArticleService.Migrations
                     Author = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Title = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Content = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    PublishedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    PublishedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    SourceArticleId = table.Column<int>(type: "int", nullable: true),
+                    Continent = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {

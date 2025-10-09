@@ -1,4 +1,4 @@
-﻿using StackExchange.Redis;
+using StackExchange.Redis;
 using System.Text.Json;
 
 public class RedisCacheService
@@ -29,3 +29,4 @@ public class RedisCacheService
         await _db.KeyDeleteAsync(key);
     }
 }
+

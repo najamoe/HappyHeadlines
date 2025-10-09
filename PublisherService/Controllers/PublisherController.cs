@@ -1,9 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using OpenTelemetry.Trace;
 using PublisherService.Clients;
 using PublisherService.Infrastructure;
-using PublisherService.Models;
 using System.Diagnostics;
+using Shared.Models;
 
 [ApiController]
 [Route("[controller]")]
@@ -29,20 +29,20 @@ public class PublishController : ControllerBase
     {
         using var activity = ActivitySource.StartActivity("PublishArticle");
 
-        // 1. Fetch draft
+        // Fetch draft
         var draft = await _draftClient.GetDraftAsync(draftId);
         if (draft == null)
         {
             return NotFound(new { message = "Draft not found" });
         }
 
-        // 2. Check draft status
+        // Check draft status
         if (draft.Status != 1) // 1 = Ready to publish 0 = draft 
         {
             return BadRequest(new { message = "Draft is not ready to publish" });
         }
 
-        // 3. Call ProfanityService
+        // Call ProfanityService
         var response = await _profanityClient.PostAsJsonAsync("api/profanity/check", new
         {
             Text = draft.Content
@@ -59,14 +59,15 @@ public class PublishController : ControllerBase
             return BadRequest(new { message = "Draft contains profanity" });
         }
 
-        // 4. Map draft → article and publish to queue
+        //  Map draft =article and publish to queue
         var article = new ArticleDto
         {
-            Id = draft.Id.ToString(),
+            Id = draft.Id,
             Title = draft.Title,
             Content = draft.Content,
             Author = draft.Author,
             PublishedAt = DateTime.UtcNow,
+            Continent = draft.Continent ?? "Global",
             TraceId = activity?.TraceId.ToString() ?? Guid.NewGuid().ToString()
         };
 
