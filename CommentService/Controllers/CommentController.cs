@@ -1,15 +1,15 @@
+using CacheService.Services;
 using CommentService.Data;
 using CommentService.Models;
-using CacheService.Services;
-using Shared;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System.Net.Http;
+using Shared.Models;
 using System.Text;
 using System.Text.Json;
-using System.Diagnostics;
-using Polly.CircuitBreaker;
+
+// Aliases to avoid "Comment" ambiguity
+using CommentEntity = CommentService.Models.Comment;
+using CommentDto = Shared.Models.CommentDto;
 
 namespace CommentService.Controllers
 {
@@ -36,129 +36,58 @@ namespace CommentService.Controllers
             _commentCacheService = commentCacheService;
         }
 
-        // -------------------- GET --------------------
-        [HttpGet("{continent}/{articleId}")]
-        public async Task<IActionResult> GetCommentsByArticleId(string continent, int articleId)
+        // POST /api/comments/{continent}
+        [HttpPost("{continent}")]
+        public async Task<IActionResult> Create([FromRoute] string continent, [FromBody] CommentDto commentDto)
         {
-            if (articleId <= 0)
-                return BadRequest("Invalid article ID.");
-
-            // Try cache first
-            var cachedComments = await _commentCacheService.GetCommentsAsync(continent, articleId);
-            if (cachedComments != null)
-            {
-                _logger.LogInformation("Cache HIT for comments of article {continent}-{ArticleId}",continent, articleId);
-                return Ok(cachedComments);
-            }
-
-            _logger.LogInformation("Cache MISS for comments of article {continent}-{ArticleId}", continent, articleId);
-
-            // If its a cash miss it fetches from DB
-            var dbComments = await _context.Comments
-                .Where(c => c.ArticleId == articleId && c.Continent == continent)
-                .ToListAsync();
-
-            if (!dbComments.Any())
-                return NotFound($"No comments found for article {articleId} in {continent}");
-
-            // Store in cache (will trigger LRU eviction if needed)
-            await _commentCacheService.SetCommentsAsync( continent,
-            articleId,
-                dbComments.Select(c => new CacheService.Dtos.CommentDto
-                {
-                Id = c.Id,
-                ArticleId = c.ArticleId,
-                Text = c.Text,
-                Author = c.Author,
-                CreatedAt = DateTime.UtcNow             
-                }).ToList()
-                );
-            return Ok(dbComments);
-        }
-
-        // -------------------- POST --------------------
-        [HttpPost]
-        public async Task<IActionResult> Create([FromQuery] string continent, [FromBody] Comment comment)
-        {
-            using var activity = MonitorService.ActivitySource.StartActivity("CreateComment");
-            if (comment == null)
-                return BadRequest("Comment is null.");
-
             if (string.IsNullOrWhiteSpace(continent))
                 return BadRequest("Continent is required.");
 
-            // Check if the article exists
-            using (MonitorService.ActivitySource.StartActivity("CheckArticleExists"))
-            {
-                var articleResponse = await _articleClient.GetAsync($"/article/{comment.ArticleId}?continent={continent}");
-                if (!articleResponse.IsSuccessStatusCode)
-                    return BadRequest("Article not found on the specified continent.");
-            }
+            // Check if article exists
+            var articleResp = await _articleClient.GetAsync($"/article/{commentDto.ArticleId}?continent={continent}");
+            if (!articleResp.IsSuccessStatusCode)
+                return BadRequest("Article not found on the specified continent.");
 
             // Profanity check
-            var json = JsonSerializer.Serialize(new { text = comment.Text });
-            _logger.LogInformation("Sending JSON to ProfanityService: {Json}", json);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var payload = JsonSerializer.Serialize(new { text = commentDto.Text });
+            var resp = await _profanityClient.PostAsync("/api/profanity/check",
+                new StringContent(payload, Encoding.UTF8, "application/json"));
+            if (!resp.IsSuccessStatusCode)
+                return StatusCode((int)resp.StatusCode, "Error checking profanity.");
 
-            try
+            var check = JsonSerializer.Deserialize<ProfanityCheckResult>(
+                await resp.Content.ReadAsStringAsync(),
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            if (check is { isClean: false })
+                return BadRequest("Comment contains profanity.");
+
+            // Map DTO to entity and set continent automatically
+            var entity = new CommentEntity
             {
-                using var profanityActivity = MonitorService.ActivitySource.StartActivity("ProfanityCheck");
-                var response = await _profanityClient.PostAsync("/api/profanity/check", content);
-                _logger.LogInformation("ProfanityService responded with status code: {StatusCode}", response.StatusCode);
+                Author = commentDto.Author,
+                Text = commentDto.Text,
+                ArticleId = commentDto.ArticleId,
+                Continent = continent,
+                CreatedAt = DateTime.UtcNow
+            };
 
-                var result = await response.Content.ReadAsStringAsync();
-                _logger.LogInformation("ProfanityService response body: {ResponseBody}", result);
+            _context.Comments.Add(entity);
+            await _context.SaveChangesAsync();
 
-                if (!response.IsSuccessStatusCode)
-                {
-                    _logger.LogError("Error checking profanity: {StatusCode}", response.StatusCode);
-                    return StatusCode((int)response.StatusCode, "Error checking profanity.");
-                }
+            await _commentCacheService.RemoveCommentsAsync(continent, entity.ArticleId);
 
-                var check = JsonSerializer.Deserialize<ProfanityCheckResult>(result, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
-
-                if (check != null && !check.isClean)
-                {
-                    _logger.LogWarning("Comment contains profanity: {CommentText}", comment.Text);
-                    return BadRequest("Comment contains profanity.");
-                }
-
-                // Save comment
-                using (MonitorService.ActivitySource.StartActivity("SaveCommentToDB"))
-                {
-                    _context.Comments.Add(comment);
-                    await _context.SaveChangesAsync();
-                }
-
-
-                //  remove from cache so new comment is loaded next time someone requests comments for this article
-                //  Makes sure there are no stale comments in cache
-                using (MonitorService.ActivitySource.StartActivity("InvalidateCommentCache"))
-                { 
-                    await _commentCacheService.RemoveCommentsAsync(continent, comment.ArticleId);
-                }
-
-                _logger.LogInformation("Comment saved successfully with ID {CommentId}", comment.Id);
-                return CreatedAtAction(nameof(Create), new { id = comment.Id }, comment);
-            }
-            catch (BrokenCircuitException ex)
+            // Map back to DTO for response
+            var result = new CommentDto
             {
-                _logger.LogError(ex, "Profanity service is unavailable due to circuit breaker.");
-                return StatusCode(503, "Profanity service is unavailable. Please try again later.");
-            }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogError(ex, "Error connecting to ProfanityService.");
-                return StatusCode(503, "Error connecting to ProfanityService.");
-            }
-            catch (JsonException ex)
-            {
-                _logger.LogError(ex, "Failed to deserialize ProfanityService response.");
-                return StatusCode(500, "Invalid response from ProfanityService.");
-            }
+                Id = entity.Id,
+                Author = entity.Author,
+                Text = entity.Text,
+                ArticleId = entity.ArticleId,
+                CreatedAt = entity.CreatedAt
+            };
+
+            return CreatedAtAction(nameof(Create), new { continent, id = result.Id }, result);
         }
 
         public class ProfanityCheckResult

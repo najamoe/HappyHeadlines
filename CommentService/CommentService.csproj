@@ -36,6 +36,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CacheService\CacheService.csproj" />
+    <ProjectReference Include="..\Shared\Shared.csproj" />
   </ItemGroup>
 
 
