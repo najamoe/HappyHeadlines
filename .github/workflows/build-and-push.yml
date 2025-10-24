@@ -11,14 +11,14 @@ jobs:
     strategy:
       matrix:
         service:
-          - articleservice
-          - cacheservice
-          - commentservice
-          - draftservice
-          - sewsletterservice
-          - profanityservice
-          - publisherservice
-          - subscriberservice
+          - ArticleService
+          - CacheService
+          - CommentService
+          - DraftService
+          - NewsletterService
+          - ProfanityService
+          - PublisherService
+          - SubscriberService
 
     steps:
       - name: Checkout repository
@@ -33,9 +33,12 @@ jobs:
 
       - name: Build and tag Docker image
         run: |
-          IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/${{ matrix.service }}:latest
-          VERSION_TAG=ghcr.io/${{ github.repository_owner }}/${{ matrix.service }}:${{ github.run_number }}
-          
-          docker build -t $IMAGE_NAME -t $VERSION_TAG ${{ matrix.service }}
+          IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/${{ matrix.service | toLowerCase }}:latest
+          VERSION_TAG=ghcr.io/${{ github.repository_owner }}/${{ matrix.service | toLowerCase }}:${{ github.run_number }}
+
+          # Build from the repository root using the specific Dockerfile
+          docker build -t $IMAGE_NAME -t $VERSION_TAG -f ${{ matrix.service }}/Dockerfile .
+
+          # Push both tags
           docker push $IMAGE_NAME
           docker push $VERSION_TAG
