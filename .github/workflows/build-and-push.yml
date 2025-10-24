@@ -12,7 +12,6 @@ jobs:
       matrix:
         service:
           - ArticleService
-          - CacheService
           - CommentService
           - DraftService
           - NewsletterService
