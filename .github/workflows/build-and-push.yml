@@ -30,23 +30,29 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and tag Docker image
+      - name: Build and push Docker image
         shell: bash
         working-directory: ${{ github.workspace }}
         run: |
-          SERVICE_NAME="${{ matrix.service }}"
-          SERVICE_LOWER=$(echo "$SERVICE_NAME" | tr '[:upper:]' '[:lower:]')
-          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/$SERVICE_LOWER:latest"
-          VERSION_TAG="ghcr.io/${{ github.repository_owner }}/$SERVICE_LOWER:${{ github.run_number }}"
+         OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+         SERVICE_NAME="${{ matrix.service }}"
+         SERVICE_LOWER=$(echo "$SERVICE_NAME" | tr '[:upper:]' '[:lower:]')
 
-          echo "Building service: $SERVICE_NAME"
-          echo "Dockerfile path: $GITHUB_WORKSPACE/$SERVICE_NAME/Dockerfile"
-          echo "Image: $IMAGE_NAME"
+         IMAGE_NAME="ghcr.io/${OWNER}/${SERVICE_LOWER}:latest"
+         VERSION_TAG="ghcr.io/${OWNER}/${SERVICE_LOWER}:${{ github.run_number }}"
 
-          docker build -t "$IMAGE_NAME" -t "$VERSION_TAG" \
-            -f "$GITHUB_WORKSPACE/$SERVICE_NAME/Dockerfile" \
-            "$GITHUB_WORKSPACE"
+         echo "Building service: $SERVICE_NAME"
+         echo "Using owner: $OWNER"
+         echo "Dockerfile path: $GITHUB_WORKSPACE/$SERVICE_NAME/Dockerfile"
+         echo "Image: $IMAGE_NAME"
 
-          docker push "$IMAGE_NAME"
-          docker push "$VERSION_TAG"
+         echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "$OWNER" --password-stdin
+
+         docker build -t "$IMAGE_NAME" -t "$VERSION_TAG" \
+           -f "$GITHUB_WORKSPACE/$SERVICE_NAME/Dockerfile" \
+           "$GITHUB_WORKSPACE"
+
+         docker push "$IMAGE_NAME"
+         docker push "$VERSION_TAG"
+
 
