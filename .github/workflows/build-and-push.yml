@@ -33,8 +33,8 @@ jobs:
 
       - name: Build and tag Docker image
         run: |
-          IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/${{ matrix.service | toLowerCase }}:latest
-          VERSION_TAG=ghcr.io/${{ github.repository_owner }}/${{ matrix.service | toLowerCase }}:${{ github.run_number }}
+          IMAGE_NAME=ghcr.io/${{ github.repository_owner }}/$(echo "${{ matrix.service }}" | tr '[:upper:]' '[:lower:]'):latest
+          VERSION_TAG=ghcr.io/${{ github.repository_owner }}/$(echo "${{ matrix.service }}" | tr '[:upper:]' '[:lower:]'):${{ github.run_number }}
 
           # Build from the repository root using the specific Dockerfile
           docker build -t $IMAGE_NAME -t $VERSION_TAG -f ${{ matrix.service }}/Dockerfile .
