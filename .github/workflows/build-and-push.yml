@@ -11,14 +11,14 @@ jobs:
     strategy:
       matrix:
         service:
-          - ArticleService
-          - CacheService
-          - CommentService
-          - DraftService
-          - NewsletterService
-          - ProfanityService
-          - PublisherService
-          - SubscriberService
+          - articleservice
+          - cacheservice
+          - commentservice
+          - draftservice
+          - sewsletterservice
+          - profanityservice
+          - publisherservice
+          - subscriberservice
 
     steps:
       - name: Checkout repository
