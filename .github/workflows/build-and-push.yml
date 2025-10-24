@@ -37,7 +37,8 @@ jobs:
           VERSION_TAG=ghcr.io/${{ github.repository_owner }}/$(echo "${{ matrix.service }}" | tr '[:upper:]' '[:lower:]'):${{ github.run_number }}
 
           # Build from the repository root using the specific Dockerfile
-          docker build -t $IMAGE_NAME -t $VERSION_TAG -f ${{ matrix.service }}/Dockerfile .
+          docker build -t $IMAGE_NAME -t $VERSION_TAG -f "./${{ matrix.service }}/Dockerfile" .
+
 
           # Push both tags
           docker push $IMAGE_NAME
