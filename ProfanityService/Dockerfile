@@ -6,8 +6,8 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
-COPY ["ProfanityService.csproj", "."]
-RUN dotnet restore "ProfanityService.csproj"
+COPY ["ProfanityService/ProfanityService.csproj", "ProfanityService/"]
+RUN dotnet restore "ProfanityService/ProfanityService.csproj"
 
 COPY . .
 RUN dotnet build "ProfanityService.csproj" -c $BUILD_CONFIGURATION -o /app/build
