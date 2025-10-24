@@ -6,7 +6,7 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
-COPY ["ProfanityService.csproj", "./"]
+COPY ["ProfanityService.csproj", "ProfanityService"]
 RUN dotnet restore "./ProfanityService.csproj"
 
 COPY . .
