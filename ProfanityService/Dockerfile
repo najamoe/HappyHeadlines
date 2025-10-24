@@ -10,10 +10,10 @@ COPY ["ProfanityService.csproj", "."]
 RUN dotnet restore "ProfanityService.csproj"
 
 COPY . .
-RUN dotnet build "./ProfanityService.csproj" -c $BUILD_CONFIGURATION -o /app/build
+RUN dotnet build "ProfanityService.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "./ProfanityService.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "ProfanityService.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
