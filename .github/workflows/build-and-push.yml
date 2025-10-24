@@ -1,5 +1,4 @@
 name: Build and Push All Services
-
 on:
   push:
     branches:
@@ -22,7 +21,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
+      # Authenticate 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
