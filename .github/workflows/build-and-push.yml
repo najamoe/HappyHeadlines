@@ -33,6 +33,7 @@ jobs:
 
       - name: Build and tag Docker image
         shell: bash
+        working-directory: ${{ github.workspace }}
         run: |
           SERVICE_NAME="${{ matrix.service }}"
           SERVICE_LOWER=$(echo "$SERVICE_NAME" | tr '[:upper:]' '[:lower:]')
@@ -40,9 +41,13 @@ jobs:
           VERSION_TAG="ghcr.io/${{ github.repository_owner }}/$SERVICE_LOWER:${{ github.run_number }}"
 
           echo "Building service: $SERVICE_NAME"
-          echo "Using Dockerfile: $SERVICE_NAME/Dockerfile"
-          echo "Image name: $IMAGE_NAME"
+          echo "Dockerfile path: $GITHUB_WORKSPACE/$SERVICE_NAME/Dockerfile"
+          echo "Image: $IMAGE_NAME"
 
-          docker build -t "$IMAGE_NAME" -t "$VERSION_TAG" -f "$SERVICE_NAME/Dockerfile" .
+          docker build -t "$IMAGE_NAME" -t "$VERSION_TAG" \
+            -f "$GITHUB_WORKSPACE/$SERVICE_NAME/Dockerfile" \
+            "$GITHUB_WORKSPACE"
+
           docker push "$IMAGE_NAME"
           docker push "$VERSION_TAG"
+
