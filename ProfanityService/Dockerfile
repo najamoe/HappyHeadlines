@@ -7,7 +7,7 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
 COPY ["ProfanityService.csproj", "."]
-RUN dotnet restore "./ProfanityService.csproj"
+RUN dotnet restore "ProfanityService.csproj"
 
 COPY . .
 RUN dotnet build "./ProfanityService.csproj" -c $BUILD_CONFIGURATION -o /app/build
