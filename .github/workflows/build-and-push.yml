@@ -42,17 +42,17 @@ jobs:
          VERSION_TAG="ghcr.io/${OWNER}/${SERVICE_LOWER}:${{ github.run_number }}"
 
          echo "Building service: $SERVICE_NAME"
+         echo "Using owner: $OWNER"
          echo "Dockerfile path: $GITHUB_WORKSPACE/$SERVICE_NAME/Dockerfile"
          echo "Image: $IMAGE_NAME"
 
-         # Authenticate to GHCR explicitly
          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "$OWNER" --password-stdin
 
-         # Build from inside the service folder (not the repo root)
-         docker build -t "$IMAGE_NAME" -t "$VERSION_TAG" -f "$GITHUB_WORKSPACE/$SERVICE_NAME/Dockerfile" "$GITHUB_WORKSPACE/$SERVICE_NAME"
+         docker build -t "$IMAGE_NAME" -t "$VERSION_TAG" \
+           -f "$GITHUB_WORKSPACE/$SERVICE_NAME/Dockerfile" \
+           "$GITHUB_WORKSPACE"
 
          docker push "$IMAGE_NAME"
          docker push "$VERSION_TAG"
-
 
 
