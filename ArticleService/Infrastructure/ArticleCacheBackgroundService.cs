@@ -13,16 +13,16 @@ namespace ArticleService.Infrastructure
     {
         private readonly ILogger<ArticleCacheBackgroundService> _logger;
         private readonly ArticleCacheService _cacheService;
-        private readonly GlobalDbContext _globalDbContext;
+        private readonly IServiceProvider _serviceProvider;
 
         public ArticleCacheBackgroundService(
             ILogger<ArticleCacheBackgroundService> logger,
             ArticleCacheService cacheService,
-            GlobalDbContext globalDbContext)
+            IServiceProvider serviceProvider)
         {
             _logger = logger;
             _cacheService = cacheService;
-            _globalDbContext = globalDbContext;
+            _serviceProvider = serviceProvider;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -35,10 +35,11 @@ namespace ArticleService.Infrastructure
 
                 try
                 {
-                    // Get all GlobalArticles from the last 14 days
-                    var sinceDate = DateTime.UtcNow.AddDays(-14);
+                    using var scope = _serviceProvider.CreateScope();
+                    var dbContext = scope.ServiceProvider.GetRequiredService<GlobalDbContext>();
 
-                    var recentArticles = await _globalDbContext.Set<GlobalArticle>()
+                    var sinceDate = DateTime.UtcNow.AddDays(-14);
+                    var recentArticles = await dbContext.Set<GlobalArticle>()
                         .Where(a => a.PublishedAt >= sinceDate)
                         .ToListAsync(stoppingToken);
 
@@ -68,7 +69,6 @@ namespace ArticleService.Infrastructure
                     _logger.LogError(ex, "Error occurred while refreshing global article cache.");
                 }
 
-                // Refresh after 1 hour
                 await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
             }
         }
