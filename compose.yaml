@@ -2,93 +2,76 @@ version: '3.9'
 
 services:
   articleservice:
-    build:
-      context: .
-      dockerfile: ArticleService/Dockerfile
+    image: articleservice:latest
+    environment:
+      RABBITMQ_HOST: rabbitmq
     ports:
       - "8080:8080"
-    depends_on:
-     rabbitmq:
-      condition: service_healthy
-    environment:
-      RABBITMQ_HOST: rabbitmq
+    deploy:
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+    networks:
+      - app-network
 
   commentservice:
-    build:
-      context: .
-      dockerfile: CommentService/Dockerfile
+    image: commentservice:latest
     ports:
       - "8081:8080"
-    depends_on:
-      - profanityservice
-      - articleservice
+    networks:
+      - app-network
 
   profanityservice:
-    build:
-      context: .
-      dockerfile: ProfanityService/Dockerfile
+    image: profanityservice:latest
     ports:
       - "8082:8080"
+    networks:
+      - app-network
     
   publisherservice:
-    build:
-      context: .
-      dockerfile: PublisherService/Dockerfile
+    image: publisherservice:latest
     ports:
       - "8083:8080"
-    depends_on:
-      - rabbitmq
-      - draftservice
     environment:
       RABBITMQ_HOST: rabbitmq
+    networks:
+      - app-network
 
   draftservice:
-    build:
-      context: .
-      dockerfile: DraftService/Dockerfile
+    image: draftservice:latest
     ports:
-      - "8084:8080" 
+      - "8084:8080"
+    networks:
+      - app-network
 
   newsletterservice:
-    build:
-      context: .
-      dockerfile: NewsletterService/Dockerfile
+    image: newsletterservice:latest
     ports:
       - "8085:8080"
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      articleservice:
-        condition: service_started
     environment:
       RABBITMQ_HOST: rabbitmq
+    networks:
+      - app-network
   
   subscriberservice:
-    build:
-      context: .
-      dockerfile: SubscriberService/Dockerfile
+    image: subscriberservice:latest
     ports:
       - "8086:8080"
-    depends_on:
-      - rabbitmq
     environment:
       RABBITMQ_HOST: rabbitmq
+    networks:
+      - app-network
 
   rabbitmq:
     image: rabbitmq:3-management
-    container_name: rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"
     environment:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
-    healthcheck:
-      test: ["CMD", "rabbitmqctl", "status"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 10s
+    networks:
+      - app-network
 
   seq:
     image: datalust/seq:latest    
@@ -100,32 +83,35 @@ services:
     environment:
       - ACCEPT_EULA=Y
       - SEQ_FIRSTRUN_NOAUTHENTICATION=true
+    networks:
+      - app-network
 
   zipkin:
     image: openzipkin/zipkin
     ports:
       - "9411:9411"
+    networks:
+      - app-network
 
   redis:
     image: redis:latest
-    container_name: redis
     ports:
-      - "6379:6379" 
+      - "6379:6379"
     command: ["redis-server", "--maxmemory", "100mb", "--maxmemory-policy", "allkeys-lru"]
+    networks:
+      - app-network
 
   redis-exporter:
     image: oliver006/redis_exporter
-    container_name: redis-exporter
     command:
       - '--redis.addr=redis:6379'
     ports:
       - "9121:9121"
-    depends_on:
-      - redis
+    networks:
+      - app-network
 
   prometheus:
     image: prom/prometheus:latest
-    container_name: prometheus
     ports:
       - "9090:9090"
     volumes:
@@ -134,34 +120,29 @@ services:
     command:
        - '--config.file=/etc/prometheus/prometheus.yml'
        - '--storage.tsdb.path=/prometheus'
-       - '--storage.tsdb.retention.time=90d'   # Keep data for 3 months
+       - '--storage.tsdb.retention.time=90d'
        - '--web.enable-lifecycle'
     restart: unless-stopped
     networks:
-      - default
+      - app-network
 
   grafana:
     image: grafana/grafana:latest
-    container_name: grafana
     ports:
       - "3000:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
-    depends_on:
-      - prometheus
-    networks:
-      - default
     volumes:
       - grafana-storage:/var/lib/grafana
-   
+    networks:
+      - app-network
 
-
+networks:
+  app-network:
+    driver: overlay
 
 volumes:
   prometheus-data:
   rps_seq_data:
   grafana-storage: {}
-
-
-

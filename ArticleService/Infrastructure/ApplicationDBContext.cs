@@ -48,6 +48,6 @@ namespace ArticleService.Infrastructure
     public class GlobalDbContext : DbContext
     {
         public GlobalDbContext(DbContextOptions<GlobalDbContext> options) : base(options) { }
-        public DbSet<GlobalArticle> Articles { get; set; }
+        public DbSet<Article> Articles { get; set; }
     }
 }

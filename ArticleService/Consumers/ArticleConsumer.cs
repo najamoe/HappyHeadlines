@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using ArticleService.Infrastructure;
+using ArticleService.Models;
 using Microsoft.EntityFrameworkCore;
 using Shared;
 using Shared.Models;
@@ -69,16 +70,18 @@ namespace ArticleService.Consumers
                     using var scope = _serviceProvider.CreateScope();
                     var db = GetDbContext("global", scope.ServiceProvider);
 
-                    db.Set<ArticleService.Models.Article>().Add(new ArticleService.Models.Article
+                    db.Set<Article>().Add(new Article
                     {
                         Title = article.Title,
                         Content = article.Content,
                         Author = article.Author,
                         Continent = article.Continent,
-                        PublishedAt = article.PublishedAt                  
+                        PublishedAt = article.PublishedAt
                     });
 
+
                     await db.SaveChangesAsync(stoppingToken);
+
                     await channel.BasicAckAsync(ea.DeliveryTag, multiple: false);
 
                     _logger.LogInformation("Saved article {Title} to database.", article.Title);

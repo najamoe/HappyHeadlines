@@ -73,7 +73,7 @@ public class PublishController : ControllerBase
 
         await _publisher.PublishArticleAsync(article);
 
-        // 5. Respond with success
+        // Respond with success
         return Ok(new { status = "published", traceId = article.TraceId });
     }
 

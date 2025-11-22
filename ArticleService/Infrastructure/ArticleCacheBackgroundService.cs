@@ -13,16 +13,33 @@ namespace ArticleService.Infrastructure
     {
         private readonly ILogger<ArticleCacheBackgroundService> _logger;
         private readonly ArticleCacheService _cacheService;
-        private readonly IServiceProvider _serviceProvider;
+        private readonly Dictionary<string, DbContext> _dbContexts;
 
         public ArticleCacheBackgroundService(
             ILogger<ArticleCacheBackgroundService> logger,
             ArticleCacheService cacheService,
-            IServiceProvider serviceProvider)
+            AfricaDbContext africa,
+            AsiaDbContext asia,
+            EuropeDbContext europe,
+            NorthAmericaDbContext northAmerica,
+            SouthAmericaDbContext southAmerica,
+            OceaniaDbContext oceania,
+            AntarcticaDbContext antarctica)
         {
             _logger = logger;
             _cacheService = cacheService;
-            _serviceProvider = serviceProvider;
+
+            // Hold references til alle kontinenter
+            _dbContexts = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["africa"] = africa,
+                ["asia"] = asia,
+                ["europe"] = europe,
+                ["northamerica"] = northAmerica,
+                ["southamerica"] = southAmerica,
+                ["oceania"] = oceania,
+                ["antarctica"] = antarctica
+            };
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -31,45 +48,56 @@ namespace ArticleService.Infrastructure
 
             while (!stoppingToken.IsCancellationRequested)
             {
-                _logger.LogInformation("Refreshing article cache for Global database...");
+                _logger.LogInformation("Refreshing article cache for all continents...");
 
                 try
                 {
-                    using var scope = _serviceProvider.CreateScope();
-                    var dbContext = scope.ServiceProvider.GetRequiredService<GlobalDbContext>();
-
-                    var sinceDate = DateTime.UtcNow.AddDays(-14);
-                    var recentArticles = await dbContext.Set<GlobalArticle>()
-                        .Where(a => a.PublishedAt >= sinceDate)
-                        .ToListAsync(stoppingToken);
-
-                    _logger.LogInformation("Found {Count} recent GlobalArticles to cache.", recentArticles.Count);
-
-                    foreach (var article in recentArticles)
+                    foreach (var kvp in _dbContexts)
                     {
-                        var dto = new ArticleDto
+                        var continent = kvp.Key;
+                        var db = kvp.Value;
+
+                        var sinceDate = DateTime.UtcNow.AddDays(-14);
+                        var recentArticles = await db.Set<Article>()
+                            .Where(a => a.PublishedAt >= sinceDate)
+                            .ToListAsync(stoppingToken);
+
+                        _logger.LogInformation("Found {Count} recent articles for {Continent}", recentArticles.Count, continent);
+
+                        foreach (var article in recentArticles)
                         {
-                            Id = article.Id,
-                            Title = article.Title,
-                            Content = article.Content,
-                            Author = article.Author,
-                            PublishedAt = article.PublishedAt,
-                            Continent = article.SourceContinent ?? "Global",
-                            SourceArticleId = article.SourceArticleId,
-                            TraceId = Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString()
-                        };
+                            var dto = new ArticleDto
+                            {
+                                Id = article.Id,
+                                Title = article.Title,
+                                Content = article.Content,
+                                Author = article.Author,
+                                PublishedAt = article.PublishedAt,
+                                Continent = article.Continent,
+                                TraceId = Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString()
+                            };
 
-                        await _cacheService.SetArticleAsync(dto);
+                            await _cacheService.SetArticleAsync(dto);
+                        }
+
+                        _logger.LogInformation("Cached {Count} articles in Redis for {Continent}", recentArticles.Count, continent);
                     }
-
-                    _logger.LogInformation("Cached {Count} GlobalArticles in Redis.", recentArticles.Count);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error occurred while refreshing global article cache.");
+                    _logger.LogError(ex, "Error occurred while refreshing article cache.");
                 }
 
-                await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+                try
+                {
+                    await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+                }
+                catch (TaskCanceledException)
+                {
+                    _logger.LogInformation("Article cache background service stopping...");
+                    break;
+                }
+
             }
         }
     }

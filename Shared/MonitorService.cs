@@ -3,6 +3,7 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Prometheus;
 using Serilog;
+using Serilog.Enrichers;
 using System.Diagnostics;
 using System.Reflection;
 
@@ -33,6 +34,8 @@ namespace Shared
             // --- Serilog (console + Seq) ---
             Serilog.Log.Logger = new LoggerConfiguration()
                 .MinimumLevel.Verbose()
+                .Enrich.FromLogContext()
+                .Enrich.WithMachineName()
                 .WriteTo.Console()
                 .WriteTo.Seq("http://seq:5341")
                 .CreateLogger();

@@ -15,7 +15,6 @@ namespace ArticleService.Controllers
     public class ArticleController : ControllerBase
     {
         private readonly Dictionary<string, DbContext> _dbContexts;
-        private readonly GlobalDbContext _global;
         private readonly ArticleCacheService _cache;
         private readonly ProfanityClient _profanity;
 
@@ -39,9 +38,10 @@ namespace ArticleService.Controllers
                 ["northamerica"] = northAmerica,
                 ["southamerica"] = southAmerica,
                 ["oceania"] = oceania,
-                ["antarctica"] = antarctica
+                ["antarctica"] = antarctica,
+                ["global"] = global
             };
-            _global = global;
+
             _cache = cache;
             _profanity = profanity;
         }
@@ -80,37 +80,7 @@ namespace ArticleService.Controllers
 
             try
             {
-                if (continent.Equals("global", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Try cache for GlobalDB
-                    var cached = await _cache.GetArticleAsync(id);
-                    if (cached != null)
-                    {
-                        MonitorService.Log.Information("Cache hit for article {Id}", id);
-                        return Ok(cached);
-                    }
 
-                    MonitorService.Log.Information("Cache miss for article {Id}", id);
-
-                    var globalArticle = await _global.Set<GlobalArticle>().FindAsync(id);
-                    if (globalArticle == null)
-                        return NotFound();
-
-                    var globalDto = new ArticleDto
-                    {
-                        Id = globalArticle.Id,
-                        Title = globalArticle.Title,
-                        Content = globalArticle.Content,
-                        Author = globalArticle.Author,
-                        PublishedAt = globalArticle.PublishedAt,
-                        SourceArticleId = globalArticle.SourceArticleId,
-                        Continent = globalArticle.SourceContinent ?? "Unknown",
-                        TraceId = Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString()
-                    };
-
-                    await _cache.SetArticleAsync(globalDto);
-                    return Ok(globalDto);
-                }
 
                 // For continent DBs
                 var db = GetDb(continent);
@@ -158,42 +128,26 @@ namespace ArticleService.Controllers
                 db.Set<Article>().Add(article);
                 await db.SaveChangesAsync();
 
-                // Create global copy
-                var globalArticle = new GlobalArticle
-                {
-                    Author = article.Author,
-                    Title = article.Title,
-                    Content = article.Content,
-                    PublishedAt = article.PublishedAt,
-                    SourceArticleId = article.Id,
-                    SourceContinent = continent
-                };
-
-                _global.Set<GlobalArticle>().Add(globalArticle);
-                await _global.SaveChangesAsync();
-
-                // Cache global version
+                // Cache article
                 var dto = new ArticleDto
                 {
-                    Id = globalArticle.Id,
-                    Title = globalArticle.Title,
-                    Content = globalArticle.Content,
-                    Author = globalArticle.Author,
-                    PublishedAt = globalArticle.PublishedAt,
-                    SourceArticleId = globalArticle.SourceArticleId,
-                    Continent = globalArticle.SourceContinent ?? "Global",
+                    Id = article.Id,
+                    Title = article.Title,
+                    Content = article.Content,
+                    Author = article.Author,
+                    PublishedAt = article.PublishedAt,
+                    Continent = article.Continent,
                     TraceId = Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString()
                 };
-
                 await _cache.SetArticleAsync(dto);
 
                 MonitorService.Log.Information(
-                    "Created article {ContinentId} in {Continent}, global copy {GlobalId}",
-                    article.Id, continent, globalArticle.Id);
+                    "Created article {ContinentId} in {Continent}",
+                    article.Id, continent);
 
                 return CreatedAtAction(nameof(GetById),
-                    new { id = globalArticle.Id, continent = "global" },
-                    new { ContinentId = article.Id, GlobalId = globalArticle.Id });
+                    new { id = article.Id, continent = continent },
+                    dto);
             }
             catch (Exception ex)
             {
@@ -218,30 +172,18 @@ namespace ArticleService.Controllers
             existing.Author = update.Author;
             await db.SaveChangesAsync();
 
-            // Update corresponding global copy
-            var globalCopy = await _global.Set<GlobalArticle>()
-                .FirstOrDefaultAsync(a => a.SourceArticleId == id && a.SourceContinent == continent);
-
-            if (globalCopy != null)
+            // Cache updated article
+            var dto = new ArticleDto
             {
-                globalCopy.Title = existing.Title;
-                globalCopy.Content = existing.Content;
-                globalCopy.Author = existing.Author;
-                await _global.SaveChangesAsync();
-
-                var dto = new ArticleDto
-                {
-                    Id = globalCopy.Id,
-                    Title = globalCopy.Title,
-                    Content = globalCopy.Content,
-                    Author = globalCopy.Author,
-                    PublishedAt = globalCopy.PublishedAt,
-                    SourceArticleId = globalCopy.SourceArticleId,
-                    Continent = globalCopy.SourceContinent ?? "Global",
-                    TraceId = Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString()
-                };
-                await _cache.SetArticleAsync(dto);
-            }
+                Id = existing.Id,
+                Title = existing.Title,
+                Content = existing.Content,
+                Author = existing.Author,
+                PublishedAt = existing.PublishedAt,
+                Continent = existing.Continent,
+                TraceId = Activity.Current?.TraceId.ToString() ?? Guid.NewGuid().ToString()
+            };
+            await _cache.SetArticleAsync(dto);
 
             return NoContent();
         }
@@ -257,17 +199,9 @@ namespace ArticleService.Controllers
             db.Remove(article);
             await db.SaveChangesAsync();
 
-            // Delete global copy + cache
-            var globalCopy = await _global.Set<GlobalArticle>()
-                .FirstOrDefaultAsync(a => a.SourceArticleId == id && a.SourceContinent == continent);
-            if (globalCopy != null)
-            {
-                _global.Remove(globalCopy);
-                await _global.SaveChangesAsync();
-                await _cache.RemoveArticleAsync(globalCopy.Id);
-            }
+            await _cache.RemoveArticleAsync(article.Id);
 
             return NoContent();
         }
     }
-}
+    }

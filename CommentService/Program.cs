@@ -5,6 +5,8 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using Prometheus;
 using Shared;
+using Polly;
+using Polly.Extensions.Http;
 
 // --- Shared / Logging ---
 _ = MonitorService.Log;
@@ -60,7 +62,8 @@ builder.Services.AddHttpClient("ArticleService", c =>
 builder.Services.AddHttpClient("ProfanityService", c =>
 {
     c.BaseAddress = new Uri("http://profanityservice:8080");
-});
+})
+    .AddPolicyHandler(GetCircuitBreakerPolicy());
 
 // --- Prometheus metrics ---
 builder.Services.AddOpenTelemetry()
@@ -96,3 +99,15 @@ app.UseSwaggerUI();
 
 
 app.Run();
+
+// --- Circuit Breaker policy ---
+static IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy()
+{
+    return HttpPolicyExtensions
+        .HandleTransientHttpError() 
+        .CircuitBreakerAsync(
+            handledEventsAllowedBeforeBreaking: 3,   // Allow 3 failures before breaking the circuit
+            durationOfBreak: TimeSpan.FromSeconds(30) // Wait 30 seconds before attempting to reset the circuit
+        );
+}
+

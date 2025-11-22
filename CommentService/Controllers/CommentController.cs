@@ -75,23 +75,46 @@ namespace CommentService.Controllers
             if (string.IsNullOrWhiteSpace(continent))
                 return BadRequest("Continent is required.");
 
+            // Checking if the article exists in ArticleService
             var articleResp = await _articleClient.GetAsync($"/article/{dto.ArticleId}?continent={continent}");
             if (!articleResp.IsSuccessStatusCode)
                 return BadRequest("Article not found on the specified continent.");
 
+            // prepare payload for ProfanityService
             var payload = JsonSerializer.Serialize(new { text = dto.Text });
-            var resp = await _profanityClient.PostAsync("/api/profanity/check",
-                new StringContent(payload, Encoding.UTF8, "application/json"));
-            if (!resp.IsSuccessStatusCode)
-                return StatusCode((int)resp.StatusCode, "Error checking profanity.");
+            var content = new StringContent(payload, Encoding.UTF8, "application/json");
 
-            var check = JsonSerializer.Deserialize<ProfanityCheckResult>(
-                await resp.Content.ReadAsStringAsync(),
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            // call ProfanityService to check for profanity with Circuit Breaker
+            try
+            {
+                var resp = await _profanityClient.PostAsync("/api/profanity/check", content);
 
-            if (check is { isClean: false })
-                return BadRequest("Comment contains profanity.");
+                if (!resp.IsSuccessStatusCode)
+                    return StatusCode((int)resp.StatusCode, "Error checking profanity.");
 
+                var check = JsonSerializer.Deserialize<ProfanityCheckResult>(
+                    await resp.Content.ReadAsStringAsync(),
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (check is { isClean: false })
+                    return BadRequest("Comment contains profanity.");
+            }
+            catch (Polly.CircuitBreaker.BrokenCircuitException)
+            {
+                // Circuit breaker is open - reject the comment
+                _logger.LogWarning("ProfanityService unavailable – rejecting comment due to circuit breaker");
+
+                return StatusCode(503, new { message = "Cannot check profanity - ProfanityService unavailable. Try again later." });
+            }
+            catch (HttpRequestException ex)
+            {
+                // Other HTTP request errors - deny the comment
+                _logger.LogError(ex, "ProfanityService request failed");
+                return StatusCode(503, new { message = "Cannot check profanity - ProfanityService unavailable. Try again later." });
+            }
+
+
+            // save comment to database
             var entity = new Comment
             {
                 Author = dto.Author,
@@ -104,6 +127,7 @@ namespace CommentService.Controllers
             _context.Comments.Add(entity);
             await _context.SaveChangesAsync();
 
+            // update cache
             await _commentCacheService.RemoveCommentsAsync(continent, entity.ArticleId);
 
             var result = new CommentDto
@@ -117,6 +141,7 @@ namespace CommentService.Controllers
 
             return CreatedAtAction(nameof(Create), new { continent, id = result.Id }, result);
         }
+
 
         private class ProfanityCheckResult
         {
